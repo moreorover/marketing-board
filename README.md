@@ -67,3 +67,9 @@ marketing-board/
 - `pnpm db:push`: Push schema changes to database
 - `pnpm db:studio`: Open database studio UI
 - `pnpm check`: Run Biome formatting and linting
+
+# Update all dependencies
+
+```bash
+pnpm dlx taze -r
+```
