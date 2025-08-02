@@ -28,6 +28,11 @@ export default function Header() {
 							Profile
 						</Link>
 					)}
+					{session && !isPending && (
+						<Link key={"/listings"} to={"/listings"}>
+							Listings
+						</Link>
+					)}
 				</nav>
 				<div className="flex items-center gap-2">
 					<ModeToggle />
