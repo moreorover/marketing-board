@@ -6,14 +6,18 @@ RUN npm install -g pnpm
 # Set working directory
 WORKDIR /app
 
-COPY apps/server/package.json .
+COPY package.json .
+COPY pnpm-*.yaml .
+COPY turbo.json .
+COPY apps/web/package.json ./apps/web/
+COPY apps/server/package.json ./apps/server/
 
 # Install dependencies
-# RUN pnpm install --frozen-lockfile
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY apps/server .
+# Copy source code (web needs server for type imports)
+COPY apps/web ./apps/web
+COPY apps/server ./apps/server
 
 # Build the application
 RUN pnpm build
@@ -24,19 +28,23 @@ FROM node:23-alpine AS production
 # Install pnpm
 RUN npm install -g pnpm
 
+# Set working directory
 WORKDIR /app
 
-COPY apps/server/package.json .
+COPY package.json .
+COPY pnpm-*.yaml .
+COPY turbo.json .
+COPY apps/web/package.json ./apps/web/
+COPY apps/server/package.json ./apps/server/
 
 # Install production dependencies only
-# RUN pnpm install --frozen-lockfile --prod
-RUN pnpm install --prod
+RUN pnpm install --frozen-lockfile --prod
 
 # Copy built application
-COPY --from=base /app/dist ./dist
+COPY --from=base /app/apps/server/dist ./dist
 
-# Expose port
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Start the application
-CMD ["pnpm", "start"]
+# Define the command to run the app
+CMD ["node", "./dist/index.js"]
