@@ -41,10 +41,13 @@ COPY apps/server/package.json ./apps/server/
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy built application
-COPY --from=base /app/apps/server/dist ./dist
+COPY --from=base /app/apps/server/dist ./apps/server/dist
+
+# Set working directory to the server app where node_modules are accessible
+WORKDIR /app/apps/server
 
 # Expose the port the app runs on
 EXPOSE 3000
 
 # Define the command to run the app
-CMD ["node", "./dist/index.js"]
+CMD ["node", "dist/index.js"]

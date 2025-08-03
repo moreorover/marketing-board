@@ -29,8 +29,8 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/marketing_board
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://yourdomain.com}
-      - CORS_ORIGIN=${CORS_ORIGIN:-https://yourdomain.com}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://localhost}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://localhost}
       - PORT=3000
     ports:
       - "3000:3000"
@@ -52,7 +52,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        - VITE_SERVER_URL=${VITE_SERVER_URL:-https://yourdomain.com}
+        - VITE_SERVER_URL=${VITE_SERVER_URL:-https://localhost}
     ports:
       - "3001:80"
     networks:
@@ -75,7 +75,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      - DOMAIN=${DOMAIN:-yourdomain.com}
+      - DOMAIN=${DOMAIN:-localhost}
     depends_on:
       - server
       - web
