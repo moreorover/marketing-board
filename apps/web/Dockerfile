@@ -6,14 +6,18 @@ RUN npm install -g pnpm
 # Set working directory
 WORKDIR /app
 
-COPY apps/web/package.json .
+COPY package.json .
+COPY pnpm-*.yaml .
+COPY turbo.json .
+COPY apps/web/package.json ./apps/web/
+COPY apps/server/package.json ./apps/server/
 
 # Install dependencies
-# RUN pnpm install --frozen-lockfile
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY apps/web .
+# Copy source code (web needs server for type imports)
+COPY apps/web ./apps/web
+COPY apps/server ./apps/server
 
 # Build the application
 RUN pnpm build
@@ -22,7 +26,7 @@ RUN pnpm build
 FROM nginx:alpine AS production
 
 # Copy built files to nginx
-COPY --from=base /app/dist /usr/share/nginx/html
+COPY --from=base /app/apps/web/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
