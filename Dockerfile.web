@@ -6,6 +6,7 @@ RUN npm install -g pnpm
 # Set working directory
 WORKDIR /app
 
+# Copy package files
 COPY package.json .
 COPY pnpm-*.yaml .
 COPY turbo.json .
@@ -19,8 +20,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
 COPY apps/server ./apps/server
 
-# Build the application
-RUN pnpm build
+# Build the web application
+RUN pnpm build --filter=web
 
 # Production stage with nginx
 FROM nginx:alpine AS production
