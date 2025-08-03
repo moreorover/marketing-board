@@ -1,7 +1,7 @@
 {$DOMAIN:localhost} {
     # API routes to server
     handle /api/* {
-        reverse_proxy server:3000 
+        reverse_proxy server:3000
         # {
         #     header_up Host {host}
         #     header_up X-Real-IP {remote}
@@ -11,10 +11,10 @@
         #     header_up Cookie {http.request.header.Cookie}
         # }
     }
-    
+
     # tRPC routes to server
     handle /trpc/* {
-        reverse_proxy server:3000 
+        reverse_proxy server:3000
         # {
         #     header_up Host {host}
         #     header_up X-Real-IP {remote}
@@ -24,7 +24,7 @@
         #     header_up Cookie {http.request.header.Cookie}
         # }
     }
-    
+
     # All other routes to web application
     handle /* {
         reverse_proxy web:80
