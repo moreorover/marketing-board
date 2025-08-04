@@ -11,9 +11,9 @@ const app = new Hono();
 
 app.use(logger());
 app.use("/*", cors({
-  origin: process.env.CORS_ORIGIN || "",
-  allowMethods: ["GET", "POST", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
+  origin: process.env.CORS_ORIGIN || "*",
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization", "Cookie"],
   credentials: true,
 }));
 
