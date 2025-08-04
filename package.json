@@ -20,7 +20,9 @@
     "db:start": "turbo -F server db:start",
     "db:watch": "turbo -F server db:watch",
     "db:stop": "turbo -F server db:stop",
-    "db:down": "turbo -F server db:down"
+    "db:down": "turbo -F server db:down",
+    "prune:server": "turbo prune server --docker",
+    "prune:web": "turbo prune web --docker"
   },
   "dependencies": {},
   "devDependencies": {
