@@ -10,7 +10,7 @@ export const appRouter = router({
   }),
   privateData: protectedProcedure.query(({ ctx }) => {
     return {
-      message: "This is private",
+      message: `My IP address is ${ctx.ip}`,
       user: ctx.session.user,
     };
   }),
