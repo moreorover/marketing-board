@@ -1,8 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
+    container_name: postgres
     image: postgres
     environment:
       POSTGRES_DB: marketing_board
@@ -22,6 +21,7 @@ services:
 
   # Server Application
   server:
+    container_name: server
     build:
       context: .
       dockerfile: Dockerfile.server
@@ -46,6 +46,7 @@ services:
 
   # Web Application
   web:
+    container_name: web
     build:
       context: .
       dockerfile: Dockerfile.web

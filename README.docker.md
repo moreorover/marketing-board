@@ -41,6 +41,36 @@ This guide explains how to deploy the marketing-board application using Docker w
    docker-compose exec server pnpm db:push
    ```
 
+## Viewing Logs
+
+After starting the services with `docker-compose up -d`, you can tail logs for individual services:
+
+**All services:**
+```bash
+docker-compose logs -f
+```
+
+**Individual services:**
+```bash
+# Database logs
+docker-compose logs -f postgres
+
+# Server (API) logs  
+docker-compose logs -f server
+
+# Web frontend logs
+docker-compose logs -f web
+
+# Caddy proxy logs
+docker-compose logs -f caddy
+```
+
+**Multiple services:**
+```bash
+# Server and database logs together
+docker-compose logs -f server postgres
+```
+
 ## Services
 
 The Docker Compose setup includes:
