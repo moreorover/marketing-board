@@ -32,8 +32,6 @@ services:
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://localhost}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://localhost}
       - PORT=3000
-    ports:
-      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,8 +51,6 @@ services:
       dockerfile: Dockerfile.web
       args:
         - VITE_SERVER_URL=${VITE_SERVER_URL:-https://localhost}
-    ports:
-      - "3001:80"
     networks:
       - app-network
     restart: unless-stopped
