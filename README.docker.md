@@ -32,43 +32,43 @@ This guide explains how to deploy the marketing-board application using Docker w
 
 3. **Start the application:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **Initialize the database:**
    ```bash
    # Wait for services to be healthy, then run migrations
-   docker-compose exec server pnpm db:push
+   docker compose exec server pnpm db:push
    ```
 
 ## Viewing Logs
 
-After starting the services with `docker-compose up -d`, you can tail logs for individual services:
+After starting the services with `docker compose up -d`, you can tail logs for individual services:
 
 **All services:**
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 **Individual services:**
 ```bash
 # Database logs
-docker-compose logs -f postgres
+docker compose logs -f postgres
 
 # Server (API) logs  
-docker-compose logs -f server
+docker compose logs -f server
 
 # Web frontend logs
-docker-compose logs -f web
+docker compose logs -f web
 
 # Caddy proxy logs
-docker-compose logs -f caddy
+docker compose logs -f caddy
 ```
 
 **Multiple services:**
 ```bash
 # Server and database logs together
-docker-compose logs -f server postgres
+docker compose logs -f server postgres
 ```
 
 ## Services
@@ -88,15 +88,15 @@ Caddy automatically obtains and renews SSL certificates from Let's Encrypt for y
 
 Check service health:
 ```bash
-docker-compose ps
-docker-compose logs -f [service-name]
+docker compose ps
+docker compose logs -f [service-name]
 ```
 
 ## Updating
 
 ```bash
-docker-compose pull
-docker-compose up -d --build
+docker compose pull
+docker compose up -d --build
 ```
 
 ## Production Considerations
