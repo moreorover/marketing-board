@@ -9,8 +9,9 @@ export const appRouter = router({
     return "OK";
   }),
   privateData: protectedProcedure.query(({ ctx }) => {
+    console.log(`User ${ctx.session.user.id} from IP ${ctx.ip}`);
     return {
-      message: "This is private",
+      message: `My IP address is ${ctx.ip}`,
       user: ctx.session.user,
     };
   }),
