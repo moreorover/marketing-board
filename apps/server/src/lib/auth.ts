@@ -19,13 +19,6 @@ export const auth = betterAuth({
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
-	// advanced: {
-	// 	defaultCookieAttributes: {
-	// 		sameSite: "none", // are you sure this is correct?
-	// 		secure: true, // are you sure this is correct?
-	// 		httpOnly: true, // are you sure this is correct?
-	// 	},
-	// },
 });
 
 
