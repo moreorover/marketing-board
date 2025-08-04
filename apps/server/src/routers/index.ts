@@ -5,7 +5,8 @@ import {
 import { todoRouter } from "./todo";
 
 export const appRouter = router({
-  healthCheck: publicProcedure.query(() => {
+  healthCheck: publicProcedure.query(({ctx}) => {
+    console.log(`Healthcheck triggered by: ${ctx.ip}`)
     return "OK";
   }),
   privateData: protectedProcedure.query(({ ctx }) => {

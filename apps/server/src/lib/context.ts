@@ -11,13 +11,6 @@ export async function createContext({ context }: CreateContextOptions) {
     headers: context.req.raw.headers,
   });
 
-  const info = getConnInfo(context);
-
-  console.log(`info ${JSON.stringify(info)}`);
-
-  console.log(`x-forwarded-for ${context.req.header("x-forwarded-for")}`)
-  console.log(`x-real-ip ${context.req.header("x-real-ip")}`)
-
   const ip = context.req.header("x-forwarded-for") || 
             context.req.header("x-real-ip");
   
