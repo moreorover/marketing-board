@@ -51,6 +51,8 @@ services:
       dockerfile: Dockerfile.web
       args:
         - VITE_SERVER_URL=${VITE_SERVER_URL:-https://localhost}
+    depends_on:
+      - server
     networks:
       - app-network
     restart: unless-stopped
