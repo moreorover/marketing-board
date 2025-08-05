@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/listings/new")({
@@ -21,7 +22,18 @@ export const Route = createFileRoute("/listings/new")({
 });
 
 function NewListingRoute() {
-	const navigate = useNavigate();
+	const { data: session, isPending } = authClient.useSession();
+
+	const navigate = Route.useNavigate();
+
+	useEffect(() => {
+		if (!session && !isPending) {
+			navigate({
+				to: "/login",
+			});
+		}
+	}, [session, isPending]);
+
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [location, setLocation] = useState("");
