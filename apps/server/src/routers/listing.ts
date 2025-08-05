@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import z from "zod";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
@@ -11,6 +11,20 @@ export const listingRouter = router({
 			.from(listing)
 			.where(eq(listing.userId, ctx.session.user.id));
 	}),
+
+	getById: protectedProcedure
+		.input(z.object({ listingId: z.string() }))
+		.query(async ({ ctx, input }) => {
+			return db
+				.select()
+				.from(listing)
+				.where(
+					and(
+						eq(listing.userId, ctx.session.user.id),
+						eq(listing.id, input.listingId),
+					),
+				);
+		}),
 
 	create: protectedProcedure
 		.input(
