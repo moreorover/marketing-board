@@ -2,9 +2,13 @@ import { and, eq } from "drizzle-orm";
 import z from "zod";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
-import { protectedProcedure, router } from "../lib/trpc";
+import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const listingRouter = router({
+	getPublic: publicProcedure.query(async () => {
+		return db.select().from(listing);
+	}),
+
 	getAll: protectedProcedure.query(async ({ ctx }) => {
 		return db
 			.select()
