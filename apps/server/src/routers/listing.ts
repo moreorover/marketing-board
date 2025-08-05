@@ -28,12 +28,17 @@ export const listingRouter = router({
 
 	create: protectedProcedure
 		.input(
-			z.object({ title: z.string().min(1), description: z.string().min(1) }),
+			z.object({
+				title: z.string().min(1),
+				description: z.string().min(1),
+				location: z.string().min(1),
+			}),
 		)
 		.mutation(async ({ input, ctx }) => {
 			return db.insert(listing).values({
 				title: input.title,
 				description: input.description,
+				location: input.location,
 				userId: ctx.session.user.id,
 			});
 		}),

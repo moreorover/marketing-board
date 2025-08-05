@@ -5,6 +5,7 @@ export const listing = pgTable("listing", {
 	id: uuid("id").primaryKey().defaultRandom(),
 	title: text("title").notNull(),
 	description: text("description").notNull(),
+	location: text("location").notNull(),
 	userId: text("user_id")
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
