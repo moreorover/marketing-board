@@ -15,7 +15,7 @@ export const listingRouter = router({
 	getById: protectedProcedure
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			return db
+			const result = await db
 				.select()
 				.from(listing)
 				.where(
@@ -24,6 +24,7 @@ export const listingRouter = router({
 						eq(listing.id, input.listingId),
 					),
 				);
+			return result[0];
 		}),
 
 	create: protectedProcedure

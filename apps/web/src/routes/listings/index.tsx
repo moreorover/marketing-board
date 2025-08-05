@@ -30,7 +30,7 @@ function ListingsRoute() {
 	};
 
 	return (
-		<div className="mx-auto w-full max-w-md py-10">
+		<div className="mx-auto w-full max-w-2xl py-10">
 			<Card>
 				<CardHeader>
 					<div className="flex items-center justify-between">
@@ -53,42 +53,51 @@ function ListingsRoute() {
 							<Loader2 className="h-6 w-6 animate-spin" />
 						</div>
 					) : listings.data?.length === 0 ? (
-						<p className="py-4 text-center">No listings yet. Add one above!</p>
+						<p className="py-4 text-center">No listings yet. Create one!</p>
 					) : (
-						<ul className="space-y-2">
+						<div className="grid gap-4">
 							{listings.data?.map((listing) => (
-								<li
-									key={listing.id}
-									className="flex items-center justify-between rounded-md border p-2"
-								>
-									<div className="flex items-center space-x-2">
-										<label htmlFor={`todo-${listing.id}`}>
-											{listing.title}
-										</label>
-									</div>
-									<Link
-										to="/listings/$listingId"
-										params={{ listingId: listing.id }}
-									>
-										<Button
-											variant="ghost"
-											size="icon"
-											aria-label="View listing"
-										>
-											<ArrowUpRight className="h-4 w-4" />
-										</Button>
-									</Link>
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => handleDeleteListing(listing.id)}
-										aria-label="Delete listing"
-									>
-										<Trash2 className="h-4 w-4" />
-									</Button>
-								</li>
+								<Card key={listing.id}>
+									<CardHeader className="pb-3">
+										<div className="flex items-start justify-between">
+											<CardTitle className="text-lg">{listing.title}</CardTitle>
+											<div className="flex items-center space-x-1">
+												<Link
+													to="/listings/$listingId"
+													params={{ listingId: listing.id }}
+												>
+													<Button
+														variant="ghost"
+														size="icon"
+														aria-label="View listing"
+													>
+														<ArrowUpRight className="h-4 w-4" />
+													</Button>
+												</Link>
+												<Button
+													variant="ghost"
+													size="icon"
+													onClick={() => handleDeleteListing(listing.id)}
+													aria-label="Delete listing"
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</div>
+										</div>
+									</CardHeader>
+									<CardContent className="pt-0">
+										<CardDescription className="mb-2">
+											{listing.description}
+										</CardDescription>
+										{listing.location && (
+											<p className="text-sm text-muted-foreground">
+												📍 {listing.location}
+											</p>
+										)}
+									</CardContent>
+								</Card>
 							))}
-						</ul>
+						</div>
 					)}
 				</CardContent>
 			</Card>
