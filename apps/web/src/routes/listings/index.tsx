@@ -32,25 +32,25 @@ function ListingsRoute() {
 				toast.error("Was unable to create listing.");
 			},
 		}),
-	);
+	)
 	const deleteMutation = useMutation(
 		trpc.listing.delete.mutationOptions({
 			onSuccess: () => {
 				listings.refetch();
 			},
 		}),
-	);
+	)
 
 	const handleAddListing = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (newListingTitle.trim()) {
 			createMutation.mutate({ title: newListingTitle, description: "xxxx" });
 		}
-	};
+	}
 
 	const handleDeleteListing = (id: string) => {
 		deleteMutation.mutate({ id });
-	};
+	}
 
 	return (
 		<div className="mx-auto w-full max-w-md py-10">
@@ -124,5 +124,5 @@ function ListingsRoute() {
 				</CardContent>
 			</Card>
 		</div>
-	);
+	)
 }
