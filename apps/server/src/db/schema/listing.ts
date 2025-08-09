@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, json } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { user } from "@/db/schema/auth";
 
 export const listing = pgTable("listing", {
@@ -6,7 +6,6 @@ export const listing = pgTable("listing", {
 	title: text("title").notNull(),
 	description: text("description").notNull(),
 	location: text("location").notNull(),
-	imageUrls: json("image_urls").$type<string[]>().default([]),
 	userId: text("user_id")
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
