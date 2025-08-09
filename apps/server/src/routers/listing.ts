@@ -60,7 +60,7 @@ export const listingRouter = router({
 	getById: protectedProcedure
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const result = await db
+			const rows = await db
 				.select()
 				.from(listing)
 				.where(
@@ -68,8 +68,31 @@ export const listingRouter = router({
 						eq(listing.userId, ctx.session.user.id),
 						eq(listing.id, input.listingId),
 					),
+				)
+				.leftJoin(
+					image,
+					and(eq(listing.id, image.listingId), eq(image.deleted, false)),
 				);
-			return result[0];
+			const map = new Map<
+				string,
+				typeof listing.$inferSelect & { images: (typeof image.$inferSelect)[] }
+			>();
+
+			for (const row of rows) {
+				const l = row.listing;
+				const img = row.image; // may be null when no image matches
+
+				if (!map.has(l.id)) {
+					map.set(l.id, { ...l, images: [] });
+				}
+				if (img && img.id) {
+					map.get(l.id)!.images.push(img);
+				}
+			}
+
+			const listingsWithImages = Array.from(map.values());
+
+			return listingsWithImages;
 		}),
 
 	create: protectedProcedure
