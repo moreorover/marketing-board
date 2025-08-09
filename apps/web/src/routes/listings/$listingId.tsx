@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import Loader from "@/components/loader";
+import { PhoneRevealButton } from "@/components/phone-reveal-button";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -134,7 +135,7 @@ function RouteComponent() {
 				)}
 
 				{/* Listing Details */}
-				<div className={hasImages ? "" : "lg:col-span-2"}>
+				<div className={hasImages ? "space-y-6" : "lg:col-span-2 space-y-6"}>
 					<Card>
 						<CardHeader>
 							<CardTitle className="text-2xl">{listing.title}</CardTitle>
@@ -151,6 +152,9 @@ function RouteComponent() {
 							</CardDescription>
 						</CardContent>
 					</Card>
+
+					{/* Phone Reveal Section */}
+					<PhoneRevealButton listingId={listing.id} />
 				</div>
 			</div>
 		</div>
