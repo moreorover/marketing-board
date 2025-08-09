@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, Phone, MessageCircle } from "lucide-react";
+import { Loader2, MessageCircle, Phone } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -43,14 +43,16 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 
 	// Helper function to format phone number for WhatsApp (remove + and any spaces)
 	const formatPhoneForWhatsApp = (phone: string) => {
-		return phone.replace(/[\+\s\-\(\)]/g, '');
+		return phone.replace(/[+\s\-()]/g, "");
 	};
 
 	const openWhatsApp = (phone: string) => {
 		const formattedPhone = formatPhoneForWhatsApp(phone);
-		const message = encodeURIComponent("Hi");
+		const message = encodeURIComponent(
+			"Hello, found you on ...com when are you next available to meet?",
+		);
 		const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
-		window.open(whatsappUrl, '_blank');
+		window.open(whatsappUrl, "_blank");
 	};
 
 	if (phoneRevealed && phoneNumber) {
@@ -70,7 +72,7 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 						>
 							{phoneNumber}
 						</a>
-						
+
 						<div className="flex gap-2">
 							<Button
 								variant="outline"
@@ -86,9 +88,9 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 								variant="outline"
 								size="sm"
 								onClick={() => openWhatsApp(phoneNumber)}
-								className="text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
+								className="border-green-200 text-green-600 hover:border-green-300 hover:text-green-700"
 							>
-								<MessageCircle className="h-4 w-4 mr-1" />
+								<MessageCircle className="mr-1 h-4 w-4" />
 								WhatsApp
 							</Button>
 						</div>
