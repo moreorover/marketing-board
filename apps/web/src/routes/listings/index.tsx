@@ -22,7 +22,7 @@ function ListingsRoute() {
 
 	const navigate = Route.useNavigate();
 
-	const listings = useQuery(trpc.listing.getAll.queryOptions());
+	const listings = useQuery(trpc.listing.getPublic.queryOptions());
 	const deleteMutation = useMutation(
 		trpc.listing.delete.mutationOptions({
 			onSuccess: () => {
@@ -101,6 +101,15 @@ function ListingsRoute() {
 										</div>
 									</CardHeader>
 									<CardContent className="pt-0">
+										{listing.images && listing.images.length > 0 && (
+											<div className="mb-3">
+												<img
+													src={listing.images[0].url}
+													alt={listing.title}
+													className="h-48 w-full rounded-md object-cover"
+												/>
+											</div>
+										)}
 										<CardDescription className="mb-2">
 											{listing.description}
 										</CardDescription>
