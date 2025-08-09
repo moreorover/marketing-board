@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useEffect } from "react";
+import { ListingCard } from "@/components/listing-card";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -72,54 +73,12 @@ function ListingsRoute() {
 					) : (
 						<div className="grid gap-4">
 							{listings.data?.map((listing) => (
-								<Card key={listing.id}>
-									<CardHeader className="pb-3">
-										<div className="flex items-start justify-between">
-											<CardTitle className="text-lg">{listing.title}</CardTitle>
-											<div className="flex items-center space-x-1">
-												<Link
-													to="/listings/$listingId"
-													params={{ listingId: listing.id }}
-												>
-													<Button
-														variant="ghost"
-														size="icon"
-														aria-label="View listing"
-													>
-														<ArrowUpRight className="h-4 w-4" />
-													</Button>
-												</Link>
-												<Button
-													variant="ghost"
-													size="icon"
-													onClick={() => handleDeleteListing(listing.id)}
-													aria-label="Delete listing"
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
-											</div>
-										</div>
-									</CardHeader>
-									<CardContent className="pt-0">
-										{listing.images && listing.images.length > 0 && (
-											<div className="mb-3">
-												<img
-													src={listing.images[0].url}
-													alt={listing.title}
-													className="h-48 w-full rounded-md object-cover"
-												/>
-											</div>
-										)}
-										<CardDescription className="mb-2">
-											{listing.description}
-										</CardDescription>
-										{listing.location && (
-											<p className="text-muted-foreground text-sm">
-												📍 {listing.location}
-											</p>
-										)}
-									</CardContent>
-								</Card>
+								<ListingCard
+									key={listing.id}
+									listing={listing}
+									showActions={true}
+									onDelete={handleDeleteListing}
+								/>
 							))}
 						</div>
 					)}

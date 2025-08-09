@@ -2,13 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import Loader from "@/components/loader";
+import { ListingCard } from "@/components/listing-card";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
 } from "@/components/ui/card";
 import { trpc } from "@/utils/trpc";
 
@@ -55,46 +53,7 @@ function HomeComponent() {
 						) : (
 							<div className="grid gap-4">
 								{listings.data?.slice(0, 3).map((listing) => (
-									<Card key={listing.id}>
-										<CardHeader className="pb-3">
-											<div className="flex items-start justify-between">
-												<CardTitle className="text-lg">
-													{listing.title}
-												</CardTitle>
-												<Link
-													to="/listings/$listingId"
-													params={{ listingId: listing.id }}
-												>
-													<Button
-														variant="ghost"
-														size="icon"
-														aria-label="View listing"
-													>
-														<ArrowUpRight className="h-4 w-4" />
-													</Button>
-												</Link>
-											</div>
-										</CardHeader>
-										<CardContent className="pt-0">
-											{listing.images && listing.images.length > 0 && (
-												<div className="mb-3">
-													<img
-														src={listing.images[0].url}
-														alt={listing.title}
-														className="h-48 w-full rounded-md object-cover"
-													/>
-												</div>
-											)}
-											<CardDescription className="mb-2">
-												{listing.description}
-											</CardDescription>
-											{listing.location && (
-												<p className="text-muted-foreground text-sm">
-													📍 {listing.location}
-												</p>
-											)}
-										</CardContent>
-									</Card>
+									<ListingCard key={listing.id} listing={listing} />
 								))}
 							</div>
 						)}
