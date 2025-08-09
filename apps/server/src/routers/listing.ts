@@ -3,6 +3,7 @@ import z from "zod";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
+import { uploadFileToSpaces } from "../lib/spaces";
 
 export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
@@ -37,13 +38,32 @@ export const listingRouter = router({
 				title: z.string().min(1),
 				description: z.string().min(1),
 				location: z.string().min(1),
+				files: z.array(
+					z.object({
+						name: z.string(),
+						type: z.string(),
+						data: z.string(),
+					})
+				).optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
+			let imageUrls: string[] = [];
+
+			if (input.files && input.files.length > 0) {
+				const uploadPromises = input.files.map(async (file) => {
+					const buffer = Buffer.from(file.data, 'base64');
+					return uploadFileToSpaces(buffer, file.name, file.type);
+				});
+				
+				imageUrls = await Promise.all(uploadPromises);
+			}
+
 			return db.insert(listing).values({
 				title: input.title,
 				description: input.description,
 				location: input.location,
+				imageUrls,
 				userId: ctx.session.user.id,
 			});
 		}),

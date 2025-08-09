@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Dropzone,
+	DropzoneContent,
+	DropzoneEmptyState,
+} from "@/components/ui/shadcn-io/dropzone";
 import { Textarea } from "@/components/ui/textarea";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
@@ -38,6 +43,12 @@ function NewListingRoute() {
 	const [description, setDescription] = useState("");
 	const [location, setLocation] = useState("");
 
+	const [files, setFiles] = useState<File[] | undefined>();
+	const handleDrop = (files: File[]) => {
+		console.log(files);
+		setFiles(files);
+	};
+
 	const createMutation = useMutation(
 		trpc.listing.create.mutationOptions({
 			onSuccess: () => {
@@ -50,10 +61,36 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (title.trim() && description.trim() && location.trim()) {
-			createMutation.mutate({ title, description, location });
+			let fileData: { name: string; type: string; data: string }[] = [];
+			
+			if (files && files.length > 0) {
+				fileData = await Promise.all(
+					files.map(async (file) => {
+						return new Promise<{ name: string; type: string; data: string }>((resolve) => {
+							const reader = new FileReader();
+							reader.onloadend = () => {
+								const base64String = (reader.result as string).split(',')[1];
+								resolve({
+									name: file.name,
+									type: file.type,
+									data: base64String,
+								});
+							};
+							reader.readAsDataURL(file);
+						});
+					})
+				);
+			}
+
+			createMutation.mutate({ 
+				title, 
+				description, 
+				location,
+				files: fileData.length > 0 ? fileData : undefined
+			});
 		}
 	};
 
@@ -88,6 +125,18 @@ function NewListingRoute() {
 								disabled={createMutation.isPending}
 								required
 							/>
+						</div>
+
+						<div>
+							<Dropzone
+								maxFiles={3}
+								onDrop={handleDrop}
+								onError={console.error}
+								src={files}
+							>
+								<DropzoneEmptyState />
+								<DropzoneContent />
+							</Dropzone>
 						</div>
 
 						<div>

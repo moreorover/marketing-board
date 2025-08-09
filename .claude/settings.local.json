@@ -3,7 +3,8 @@
     "allow": [
       "Bash(touch:*)",
       "Bash(rm:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": []
   }
