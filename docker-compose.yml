@@ -31,7 +31,11 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://localhost}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://localhost}
-      - PORT=3000
+      - DO_SPACES_ENDPOINT=${DO_SPACES_ENDPOINT:-https://ams3.digitaloceanspaces.com}
+      - DO_SPACES_REGION=${DO_SPACES_REGION:-ams3}
+      - DO_SPACES_ACCESS_KEY=${DO_SPACES_ACCESS_KEY}
+      - DO_SPACES_SECRET_KEY=${DO_SPACES_SECRET_KEY}
+      - DO_SPACES_BUCKET=${DO_SPACES_BUCKET:-marketing-galery}
     depends_on:
       postgres:
         condition: service_healthy
