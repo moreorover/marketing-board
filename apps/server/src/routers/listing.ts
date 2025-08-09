@@ -96,6 +96,7 @@ export const listingRouter = router({
 				title: z.string().min(1),
 				description: z.string().min(1),
 				location: z.string().min(1),
+				phone: z.string().min(25).max(25).startsWith("+44"),
 				files: z
 					.array(
 						z.object({
@@ -125,6 +126,7 @@ export const listingRouter = router({
 					title: input.title,
 					description: input.description,
 					location: input.location,
+					phone: input.phone,
 					userId: ctx.session.user.id,
 				})
 				.returning();

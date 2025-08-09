@@ -42,6 +42,7 @@ function NewListingRoute() {
 	const [title, setTitle] = useState("");
 	const [description, setDescription] = useState("");
 	const [location, setLocation] = useState("");
+	const [phone, setPhone] = useState("");
 
 	const [files, setFiles] = useState<File[] | undefined>();
 	const handleDrop = (files: File[]) => {
@@ -65,31 +66,34 @@ function NewListingRoute() {
 		e.preventDefault();
 		if (title.trim() && description.trim() && location.trim()) {
 			let fileData: { name: string; type: string; data: string }[] = [];
-			
+
 			if (files && files.length > 0) {
 				fileData = await Promise.all(
 					files.map(async (file) => {
-						return new Promise<{ name: string; type: string; data: string }>((resolve) => {
-							const reader = new FileReader();
-							reader.onloadend = () => {
-								const base64String = (reader.result as string).split(',')[1];
-								resolve({
-									name: file.name,
-									type: file.type,
-									data: base64String,
-								});
-							};
-							reader.readAsDataURL(file);
-						});
-					})
+						return new Promise<{ name: string; type: string; data: string }>(
+							(resolve) => {
+								const reader = new FileReader();
+								reader.onloadend = () => {
+									const base64String = (reader.result as string).split(",")[1];
+									resolve({
+										name: file.name,
+										type: file.type,
+										data: base64String,
+									});
+								};
+								reader.readAsDataURL(file);
+							},
+						);
+					}),
 				);
 			}
 
-			createMutation.mutate({ 
-				title, 
-				description, 
+			createMutation.mutate({
+				title,
+				description,
 				location,
-				files: fileData.length > 0 ? fileData : undefined
+				phone,
+				files: fileData.length > 0 ? fileData : undefined,
 			});
 		}
 	};
@@ -146,6 +150,18 @@ function NewListingRoute() {
 								value={location}
 								onChange={(e) => setLocation(e.target.value)}
 								placeholder="Enter location..."
+								disabled={createMutation.isPending}
+								required
+							/>
+						</div>
+
+						<div>
+							<Label htmlFor="phone">Phone</Label>
+							<Input
+								id="phone"
+								value={phone}
+								onChange={(e) => setPhone(e.target.value)}
+								placeholder="+44"
 								disabled={createMutation.isPending}
 								required
 							/>

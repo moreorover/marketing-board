@@ -6,6 +6,7 @@ export const listing = pgTable("listing", {
 	title: text("title").notNull(),
 	description: text("description").notNull(),
 	location: text("location").notNull(),
+	phone: text("phone").notNull(),
 	userId: text("user_id")
 		.notNull()
 		.references(() => user.id, { onDelete: "cascade" }),
