@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, Phone } from "lucide-react";
+import { Loader2, Phone, MessageCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,18 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 		});
 	};
 
+	// Helper function to format phone number for WhatsApp (remove + and any spaces)
+	const formatPhoneForWhatsApp = (phone: string) => {
+		return phone.replace(/[\+\s\-\(\)]/g, '');
+	};
+
+	const openWhatsApp = (phone: string) => {
+		const formattedPhone = formatPhoneForWhatsApp(phone);
+		const message = encodeURIComponent("Hi");
+		const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
+		window.open(whatsappUrl, '_blank');
+	};
+
 	if (phoneRevealed && phoneNumber) {
 		return (
 			<Card>
@@ -51,23 +63,35 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<div className="flex items-center justify-between">
+					<div className="space-y-3">
 						<a
 							href={`tel:${phoneNumber}`}
-							className="font-bold text-2xl text-green-600 transition-colors hover:text-green-700"
+							className="block font-bold text-2xl text-green-600 transition-colors hover:text-green-700"
 						>
 							{phoneNumber}
 						</a>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								navigator.clipboard.writeText(phoneNumber);
-								toast.success("Phone number copied to clipboard!");
-							}}
-						>
-							Copy
-						</Button>
+						
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									navigator.clipboard.writeText(phoneNumber);
+									toast.success("Phone number copied to clipboard!");
+								}}
+							>
+								Copy
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => openWhatsApp(phoneNumber)}
+								className="text-green-600 hover:text-green-700 border-green-200 hover:border-green-300"
+							>
+								<MessageCircle className="h-4 w-4 mr-1" />
+								WhatsApp
+							</Button>
+						</div>
 					</div>
 				</CardContent>
 			</Card>
