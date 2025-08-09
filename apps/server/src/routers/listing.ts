@@ -57,18 +57,13 @@ export const listingRouter = router({
 			.where(eq(listing.userId, ctx.session.user.id));
 	}),
 
-	getById: protectedProcedure
+	getById: publicProcedure
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ ctx, input }) => {
 			const rows = await db
 				.select()
 				.from(listing)
-				.where(
-					and(
-						eq(listing.userId, ctx.session.user.id),
-						eq(listing.id, input.listingId),
-					),
-				)
+				.where(eq(listing.id, input.listingId))
 				.leftJoin(
 					image,
 					and(eq(listing.id, image.listingId), eq(image.deleted, false)),
