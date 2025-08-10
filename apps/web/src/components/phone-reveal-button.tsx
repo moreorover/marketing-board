@@ -73,7 +73,7 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 							{phoneNumber}
 						</a>
 
-						<div className="flex gap-2">
+						<div className="flex items-center gap-2">
 							<Button
 								variant="outline"
 								size="sm"
@@ -84,15 +84,14 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 							>
 								Copy
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
+							{/** biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
+							<img
+								src="/static/WhatsAppButtonGreenLarge.svg"
+								alt="Send WhatsApp message"
+								className="h-8 w-auto cursor-pointer rounded transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
 								onClick={() => openWhatsApp(phoneNumber)}
-								className="border-green-200 text-green-600 hover:border-green-300 hover:text-green-700"
-							>
-								<MessageCircle className="mr-1 h-4 w-4" />
-								WhatsApp
-							</Button>
+								title="Send WhatsApp message"
+							/>
 						</div>
 					</div>
 				</CardContent>
