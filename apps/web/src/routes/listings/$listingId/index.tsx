@@ -63,11 +63,11 @@ function RouteComponent() {
 					</Button>
 				</Link>
 				
-				{isOwner && images.length > 1 && (
+				{isOwner && (
 					<Link to="/listings/$listingId/edit" params={{ listingId }}>
 						<Button variant="outline" size="sm">
 							<Edit className="mr-2 h-4 w-4" />
-							Edit Main Image
+							Edit Listing
 						</Button>
 					</Link>
 				)}

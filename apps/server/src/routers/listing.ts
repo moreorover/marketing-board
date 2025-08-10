@@ -111,13 +111,34 @@ export const listingRouter = router({
 				id: z.string(),
 				title: z.string().min(1),
 				description: z.string().min(1),
+				location: z.string().min(1),
+				phone: z.string().min(13).max(13).startsWith("+44"),
 			}),
 		)
-		.mutation(async ({ input }) => {
-			return db.update(listing).set({
-				title: input.title,
-				description: input.description,
-			});
+		.mutation(async ({ input, ctx }) => {
+			// Verify user owns the listing
+			const listingResult = await db
+				.select({ userId: listing.userId })
+				.from(listing)
+				.where(eq(listing.id, input.id))
+				.limit(1);
+
+			if (listingResult.length === 0) {
+				throw new Error("Listing not found");
+			}
+
+			if (listingResult[0].userId !== ctx.session.user.id) {
+				throw new Error("Unauthorized: You can only edit your own listings");
+			}
+
+			return db.update(listing)
+				.set({
+					title: input.title,
+					description: input.description,
+					location: input.location,
+					phone: input.phone,
+				})
+				.where(eq(listing.id, input.id));
 		}),
 
 	delete: protectedProcedure
