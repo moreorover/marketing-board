@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import z from "zod";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
@@ -9,16 +9,16 @@ import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
 		const listings = await db.select().from(listing);
-		
+
 		// Get images for each listing from S3
 		const listingsWithImages = await Promise.all(
 			listings.map(async (listingItem) => {
 				const images = await getListingImages(listingItem.id);
 				return {
 					...listingItem,
-					images: images.map(url => ({ url })) // Convert to expected format
+					images: images.map((url) => ({ url })), // Convert to expected format
 				};
-			})
+			}),
 		);
 
 		return listingsWithImages;
@@ -46,11 +46,13 @@ export const listingRouter = router({
 
 			const listingItem = listingResult[0];
 			const images = await getListingImages(listingItem.id);
-			
-			return [{
-				...listingItem,
-				images: images.map(url => ({ url }))
-			}];
+
+			return [
+				{
+					...listingItem,
+					images: images.map((url) => ({ url })),
+				},
+			];
 		}),
 
 	create: protectedProcedure
