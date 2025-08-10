@@ -1,52 +1,25 @@
 import { and, eq, sql } from "drizzle-orm";
 import z from "zod";
-import { image } from "@/db/schema/image";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
-import { uploadFileToSpaces } from "../lib/spaces";
+import { compressAndUploadImage, getListingImages } from "../lib/spaces";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
-		// If you want ALL images (including deleted ones), use this:
-		const rows = await db
-			.select()
-			.from(listing)
-			// .leftJoin(image, eq(listing.id, image.listingId));
-			.leftJoin(
-				image,
-				and(eq(listing.id, image.listingId), eq(image.deleted, false)),
-			);
-
-		// If you want ONLY non-deleted images, use this instead:
-		// const rows = await db
-		//   .select()
-		//   .from(listing)
-		//   .leftJoin(
-		//     image,
-		//     and(eq(listing.id, image.listingId), eq(image.deleted, false))
-		//   );
-
-		// Group into listings with an images[] array
-		const map = new Map<
-			string,
-			typeof listing.$inferSelect & { images: (typeof image.$inferSelect)[] }
-		>();
-
-		for (const row of rows) {
-			const l = row.listing;
-			const img = row.image; // may be null when no image matches
-
-			if (!map.has(l.id)) {
-				map.set(l.id, { ...l, images: [] });
-			}
-			if (img && img.id) {
-				map.get(l.id)!.images.push(img);
-			}
-		}
-
-		const listingsWithImages = Array.from(map.values());
+		const listings = await db.select().from(listing);
+		
+		// Get images for each listing from S3
+		const listingsWithImages = await Promise.all(
+			listings.map(async (listingItem) => {
+				const images = await getListingImages(listingItem.id);
+				return {
+					...listingItem,
+					images: images.map(url => ({ url })) // Convert to expected format
+				};
+			})
+		);
 
 		return listingsWithImages;
 	}),
@@ -60,35 +33,24 @@ export const listingRouter = router({
 
 	getById: publicProcedure
 		.input(z.object({ listingId: z.string() }))
-		.query(async ({ ctx, input }) => {
-			const rows = await db
+		.query(async ({ input }) => {
+			const listingResult = await db
 				.select()
 				.from(listing)
 				.where(eq(listing.id, input.listingId))
-				.leftJoin(
-					image,
-					and(eq(listing.id, image.listingId), eq(image.deleted, false)),
-				);
-			const map = new Map<
-				string,
-				typeof listing.$inferSelect & { images: (typeof image.$inferSelect)[] }
-			>();
+				.limit(1);
 
-			for (const row of rows) {
-				const l = row.listing;
-				const img = row.image; // may be null when no image matches
-
-				if (!map.has(l.id)) {
-					map.set(l.id, { ...l, images: [] });
-				}
-				if (img && img.id) {
-					map.get(l.id)!.images.push(img);
-				}
+			if (listingResult.length === 0) {
+				return [];
 			}
 
-			const listingsWithImages = Array.from(map.values());
-
-			return listingsWithImages;
+			const listingItem = listingResult[0];
+			const images = await getListingImages(listingItem.id);
+			
+			return [{
+				...listingItem,
+				images: images.map(url => ({ url }))
+			}];
 		}),
 
 	create: protectedProcedure
@@ -110,17 +72,7 @@ export const listingRouter = router({
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
-			let imageUrls: string[] = [];
-
-			if (input.files && input.files.length > 0) {
-				const uploadPromises = input.files.map(async (file) => {
-					const buffer = Buffer.from(file.data, "base64");
-					return uploadFileToSpaces(buffer, file.name, file.type);
-				});
-
-				imageUrls = await Promise.all(uploadPromises);
-			}
-
+			// First create the listing to get the ID
 			const createdListing = await db
 				.insert(listing)
 				.values({
@@ -132,14 +84,16 @@ export const listingRouter = router({
 				})
 				.returning();
 
-			if (imageUrls && imageUrls.length > 0) {
-				const images = imageUrls.map((imageUrl) => ({
-					url: imageUrl,
-					listingId: createdListing[0].id,
-					userId: ctx.session.user.id,
-				}));
+			const listingId = createdListing[0].id;
 
-				await db.insert(image).values(images);
+			// Upload and compress images using the listing ID for folder structure
+			if (input.files && input.files.length > 0) {
+				const uploadPromises = input.files.map(async (file) => {
+					const buffer = Buffer.from(file.data, "base64");
+					return compressAndUploadImage(buffer, file.name, listingId);
+				});
+
+				await Promise.all(uploadPromises);
 			}
 
 			return createdListing;
