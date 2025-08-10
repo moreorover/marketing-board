@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import z from "zod";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -27,14 +28,25 @@ export const Route = createFileRoute("/listings/new")({
 	component: NewListingRoute,
 });
 
-interface Listing {
-	title: string;
-	description: string;
-	location: string;
-	phone: string;
-}
+const FormSchema = z.object({
+	title: z.string().min(1),
+	description: z.string().min(1),
+	location: z.string().min(1),
+	phone: z.string().startsWith("+44").min(13).max(13),
+	files: z
+		.array(
+			z.object({
+				name: z.string(),
+				type: z.string(),
+				data: z.string(),
+			}),
+		)
+		.optional(),
+});
 
-const defaultListing: Listing = {
+type FormData = z.infer<typeof FormSchema>;
+
+const defaultValues: FormData = {
 	title: "",
 	description: "",
 	location: "",
@@ -55,7 +67,6 @@ function NewListingRoute() {
 
 	const [files, setFiles] = useState<File[] | undefined>();
 	const handleDrop = (files: File[]) => {
-		console.log(files);
 		setFiles(files);
 	};
 
@@ -72,7 +83,8 @@ function NewListingRoute() {
 	);
 
 	const form = useForm({
-		defaultValues: defaultListing,
+		defaultValues,
+		validators: { onChange: FormSchema },
 		onSubmit: async ({ formApi, value }) => {
 			let fileData: { name: string; type: string; data: string }[] = [];
 
@@ -122,58 +134,46 @@ function NewListingRoute() {
 						}}
 						className="space-y-4"
 					>
-						<form.Field
-							name="title"
-							validators={{
-								onChange: ({ value }) =>
-									!value ? "Title is required" : undefined,
-							}}
-						>
-							{(field) => (
+						<form.Field name="title">
+							{({ name, state, handleChange, handleBlur }) => (
 								<div>
-									<Label htmlFor={field.name}>Title</Label>
+									<Label htmlFor={name}>Title</Label>
 									<Input
-										id={field.name}
-										name={field.name}
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
+										id={name}
+										name={name}
+										value={state.value}
+										onBlur={handleBlur}
+										onChange={(e) => handleChange(e.target.value)}
 										placeholder="Enter listing title..."
 										disabled={createMutation.isPending}
 									/>
-									{field.state.meta.errors ? (
+									{state.meta.errors.length > 0 && state.meta.isTouched && (
 										<div className="mt-1 text-red-500 text-sm">
-											{field.state.meta.errors[0]}
+											{state.meta.errors[0]?.message}
 										</div>
-									) : null}
+									)}
 								</div>
 							)}
 						</form.Field>
 
-						<form.Field
-							name="description"
-							validators={{
-								onChange: ({ value }) =>
-									!value ? "Description is required" : undefined,
-							}}
-						>
-							{(field) => (
+						<form.Field name="description">
+							{({ name, state, handleChange, handleBlur }) => (
 								<div>
-									<Label htmlFor={field.name}>Description</Label>
+									<Label htmlFor={name}>Description</Label>
 									<Textarea
-										id={field.name}
-										name={field.name}
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
+										id={name}
+										name={name}
+										value={state.value}
+										onBlur={handleBlur}
+										onChange={(e) => handleChange(e.target.value)}
 										placeholder="Enter listing description..."
 										disabled={createMutation.isPending}
 									/>
-									{field.state.meta.errors ? (
+									{state.meta.errors.length > 0 && state.meta.isTouched && (
 										<div className="mt-1 text-red-500 text-sm">
-											{field.state.meta.errors[0]}
+											{state.meta.errors[0]?.message}
 										</div>
-									) : null}
+									)}
 								</div>
 							)}
 						</form.Field>
@@ -190,64 +190,46 @@ function NewListingRoute() {
 							</Dropzone>
 						</div>
 
-						<form.Field
-							name="location"
-							validators={{
-								onChange: ({ value }) =>
-									!value ? "Location is required" : undefined,
-							}}
-						>
-							{(field) => (
+						<form.Field name="location">
+							{({ name, state, handleChange, handleBlur }) => (
 								<div>
-									<Label htmlFor={field.name}>Location</Label>
+									<Label htmlFor={name}>Location</Label>
 									<Input
-										id={field.name}
-										name={field.name}
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
+										id={name}
+										name={name}
+										value={state.value}
+										onBlur={handleBlur}
+										onChange={(e) => handleChange(e.target.value)}
 										placeholder="Enter location..."
 										disabled={createMutation.isPending}
 									/>
-									{field.state.meta.errors ? (
+									{state.meta.errors.length > 0 && state.meta.isTouched && (
 										<div className="mt-1 text-red-500 text-sm">
-											{field.state.meta.errors[0]}
+											{state.meta.errors[0]?.message}
 										</div>
-									) : null}
+									)}
 								</div>
 							)}
 						</form.Field>
 
-						<form.Field
-							name="phone"
-							validators={{
-								onChange: ({ value }) => {
-									if (!value) return "Phone is required";
-									if (!value.startsWith("+44"))
-										return "Phone must start with +44";
-									if (value.length !== 13)
-										return "Phone must be 13 characters long";
-									return undefined;
-								},
-							}}
-						>
-							{(field) => (
+						<form.Field name="phone">
+							{({ name, state, handleChange, handleBlur }) => (
 								<div>
-									<Label htmlFor={field.name}>Phone</Label>
+									<Label htmlFor={name}>Phone</Label>
 									<Input
-										id={field.name}
-										name={field.name}
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
+										id={name}
+										name={name}
+										value={state.value}
+										onBlur={handleBlur}
+										onChange={(e) => handleChange(e.target.value)}
 										placeholder="+44"
 										disabled={createMutation.isPending}
 									/>
-									{field.state.meta.errors ? (
+									{state.meta.errors.length > 0 && state.meta.isTouched && (
 										<div className="mt-1 text-red-500 text-sm">
-											{field.state.meta.errors[0]}
+											{state.meta.errors[0]?.message}
 										</div>
-									) : null}
+									)}
 								</div>
 							)}
 						</form.Field>
