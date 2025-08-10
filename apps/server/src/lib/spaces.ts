@@ -1,4 +1,6 @@
 import {
+	CopyObjectCommand,
+	DeleteObjectCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
@@ -129,5 +131,94 @@ export async function createThumbnail(
 	} catch (error) {
 		console.error("Thumbnail creation failed:", error);
 		throw new Error("Failed to create thumbnail");
+	}
+}
+
+export async function changeMainImage(listingId: string, newMainImageUrl: string): Promise<void> {
+	const bucketName = process.env.DO_SPACES_BUCKET!;
+	const prefix = `listings/${listingId}/`;
+	
+	try {
+		// Get all images for this listing
+		const listParams = {
+			Bucket: bucketName,
+			Prefix: prefix,
+		};
+
+		const data = await spacesClient.send(new ListObjectsV2Command(listParams));
+
+		if (!data.Contents) {
+			throw new Error("No images found for listing");
+		}
+
+		// Find the new main image key from URL
+		const newMainImageKey = data.Contents.find(obj => {
+			if (!obj.Key) return false;
+			const imageUrl = `https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/${obj.Key}`;
+			return imageUrl === newMainImageUrl;
+		})?.Key;
+
+		if (!newMainImageKey) {
+			throw new Error("New main image not found in listing images");
+		}
+
+		// Remove main_ prefix from current main image(s)
+		const renamePromises: Promise<void>[] = [];
+		
+		for (const obj of data.Contents) {
+			if (!obj.Key || obj.Key === prefix) continue;
+
+			const fileName = obj.Key.split('/').pop()!;
+			
+			if (fileName.startsWith('main_') && obj.Key !== newMainImageKey) {
+				// Remove main_ prefix from current main image
+				const newKey = obj.Key.replace('/main_', '/');
+				
+				// Copy object with new key
+				await spacesClient.send(new CopyObjectCommand({
+					Bucket: bucketName,
+					CopySource: `${bucketName}/${obj.Key}`,
+					Key: newKey,
+					ACL: "public-read",
+				}));
+
+				// Delete old object
+				renamePromises.push(
+					spacesClient.send(new DeleteObjectCommand({
+						Bucket: bucketName,
+						Key: obj.Key,
+					})).then(() => {})
+				);
+			}
+		}
+
+		// Add main_ prefix to new main image (if it doesn't already have it)
+		const newFileName = newMainImageKey.split('/').pop()!;
+		if (!newFileName.startsWith('main_')) {
+			const newKey = newMainImageKey.replace(newFileName, `main_${newFileName}`);
+			
+			// Copy object with main_ prefix
+			await spacesClient.send(new CopyObjectCommand({
+				Bucket: bucketName,
+				CopySource: `${bucketName}/${newMainImageKey}`,
+				Key: newKey,
+				ACL: "public-read",
+			}));
+
+			// Delete old object
+			renamePromises.push(
+				spacesClient.send(new DeleteObjectCommand({
+					Bucket: bucketName,
+					Key: newMainImageKey,
+				})).then(() => {})
+			);
+		}
+
+		// Wait for all rename operations to complete
+		await Promise.all(renamePromises);
+		
+	} catch (error) {
+		console.error("Failed to change main image:", error);
+		throw new Error("Failed to change main image");
 	}
 }

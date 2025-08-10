@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Edit } from "lucide-react";
 import { useState } from "react";
 import Loader from "@/components/loader";
 import { PhoneRevealButton } from "@/components/phone-reveal-button";
@@ -12,13 +12,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
-export const Route = createFileRoute("/listings/$listingId")({
+export const Route = createFileRoute("/listings/$listingId/")({
 	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getById.queryOptions({ listingId }),
-		);
+		)
 	},
 	pendingComponent: Loader,
 	component: RouteComponent,
@@ -27,11 +28,15 @@ export const Route = createFileRoute("/listings/$listingId")({
 function RouteComponent() {
 	const { listingId } = Route.useParams();
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
+	const { data: session } = authClient.useSession();
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
-	);
+	)
 	const listing = listingQuery.data?.[0];
+
+	// Check if current user owns this listing
+	const isOwner = session?.user?.id && listing?.userId === session.user.id;
 
 	if (!listing) {
 		return <Loader />;
@@ -42,21 +47,30 @@ function RouteComponent() {
 
 	const nextImage = () => {
 		setCurrentImageIndex((prev) => (prev + 1) % images.length);
-	};
+	}
 
 	const prevImage = () => {
 		setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-	};
+	}
 
 	return (
 		<div className="mx-auto w-full max-w-4xl py-10">
-			<div className="mb-6">
+			<div className="mb-6 flex items-center justify-between">
 				<Link to="/listings">
 					<Button variant="ghost" className="p-0">
 						<ArrowLeft className="mr-2 h-4 w-4" />
 						Back to Listings
 					</Button>
 				</Link>
+				
+				{isOwner && images.length > 1 && (
+					<Link to="/listings/$listingId/edit" params={{ listingId }}>
+						<Button variant="outline" size="sm">
+							<Edit className="mr-2 h-4 w-4" />
+							Edit Main Image
+						</Button>
+					</Link>
+				)}
 			</div>
 
 			<div className="grid gap-6 lg:grid-cols-2">
@@ -124,7 +138,7 @@ function RouteComponent() {
 									>
 										<img
 											src={image.url}
-											alt={`Thumbnail ${index + 1}`}
+											alt={"Thumbnail ${index + 1}"}
 											className="h-full w-full object-cover"
 										/>
 									</Button>
@@ -158,5 +172,5 @@ function RouteComponent() {
 				</div>
 			</div>
 		</div>
-	);
+	)
 }

@@ -3,7 +3,7 @@ import z from "zod";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
-import { compressAndUploadImage, getListingImages } from "../lib/spaces";
+import { compressAndUploadImage, getListingImages, changeMainImage } from "../lib/spaces";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const listingRouter = router({
@@ -157,5 +157,34 @@ export const listingRouter = router({
 			});
 
 			return { phone };
+		}),
+
+	updateMainImage: protectedProcedure
+		.input(
+			z.object({
+				listingId: z.string(),
+				newMainImageUrl: z.string().url(),
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			// Verify user owns the listing
+			const listingResult = await db
+				.select({ userId: listing.userId })
+				.from(listing)
+				.where(eq(listing.id, input.listingId))
+				.limit(1);
+
+			if (listingResult.length === 0) {
+				throw new Error("Listing not found");
+			}
+
+			if (listingResult[0].userId !== ctx.session.user.id) {
+				throw new Error("Unauthorized: You can only edit your own listings");
+			}
+
+			// Change the main image in S3
+			await changeMainImage(input.listingId, input.newMainImageUrl);
+
+			return { success: true };
 		}),
 });
