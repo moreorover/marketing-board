@@ -1,3 +1,4 @@
+import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
@@ -26,9 +27,22 @@ export const Route = createFileRoute("/listings/new")({
 	component: NewListingRoute,
 });
 
+interface Listing {
+	title: string;
+	description: string;
+	location: string;
+	phone: string;
+}
+
+const defaultListing: Listing = {
+	title: "",
+	description: "",
+	location: "",
+	phone: "",
+};
+
 function NewListingRoute() {
 	const { data: session, isPending } = authClient.useSession();
-
 	const navigate = Route.useNavigate();
 
 	useEffect(() => {
@@ -38,11 +52,6 @@ function NewListingRoute() {
 			});
 		}
 	}, [session, isPending]);
-
-	const [title, setTitle] = useState("");
-	const [description, setDescription] = useState("");
-	const [location, setLocation] = useState("");
-	const [phone, setPhone] = useState("");
 
 	const [files, setFiles] = useState<File[] | undefined>();
 	const handleDrop = (files: File[]) => {
@@ -62,9 +71,9 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (title.trim() && description.trim() && location.trim()) {
+	const form = useForm({
+		defaultValues: defaultListing,
+		onSubmit: async ({ formApi, value }) => {
 			let fileData: { name: string; type: string; data: string }[] = [];
 
 			if (files && files.length > 0) {
@@ -89,14 +98,13 @@ function NewListingRoute() {
 			}
 
 			createMutation.mutate({
-				title,
-				description,
-				location,
-				phone,
+				...value,
 				files: fileData.length > 0 ? fileData : undefined,
 			});
-		}
-	};
+
+			formApi.reset();
+		},
+	});
 
 	return (
 		<div className="mx-auto w-full max-w-md py-10">
@@ -106,30 +114,69 @@ function NewListingRoute() {
 					<CardDescription>Add a new listing to the board</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<form onSubmit={handleSubmit} className="space-y-4">
-						<div>
-							<Label htmlFor="title">Title</Label>
-							<Input
-								id="title"
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								placeholder="Enter listing title..."
-								disabled={createMutation.isPending}
-								required
-							/>
-						</div>
+					<form
+						onSubmit={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							form.handleSubmit();
+						}}
+						className="space-y-4"
+					>
+						<form.Field
+							name="title"
+							validators={{
+								onChange: ({ value }) =>
+									!value ? "Title is required" : undefined,
+							}}
+						>
+							{(field) => (
+								<div>
+									<Label htmlFor={field.name}>Title</Label>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="Enter listing title..."
+										disabled={createMutation.isPending}
+									/>
+									{field.state.meta.errors ? (
+										<div className="mt-1 text-red-500 text-sm">
+											{field.state.meta.errors[0]}
+										</div>
+									) : null}
+								</div>
+							)}
+						</form.Field>
 
-						<div>
-							<Label htmlFor="description">Description</Label>
-							<Textarea
-								id="description"
-								value={description}
-								onChange={(e) => setDescription(e.target.value)}
-								placeholder="Enter listing description..."
-								disabled={createMutation.isPending}
-								required
-							/>
-						</div>
+						<form.Field
+							name="description"
+							validators={{
+								onChange: ({ value }) =>
+									!value ? "Description is required" : undefined,
+							}}
+						>
+							{(field) => (
+								<div>
+									<Label htmlFor={field.name}>Description</Label>
+									<Textarea
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="Enter listing description..."
+										disabled={createMutation.isPending}
+									/>
+									{field.state.meta.errors ? (
+										<div className="mt-1 text-red-500 text-sm">
+											{field.state.meta.errors[0]}
+										</div>
+									) : null}
+								</div>
+							)}
+						</form.Field>
 
 						<div>
 							<Dropzone
@@ -143,29 +190,67 @@ function NewListingRoute() {
 							</Dropzone>
 						</div>
 
-						<div>
-							<Label htmlFor="location">Location</Label>
-							<Input
-								id="location"
-								value={location}
-								onChange={(e) => setLocation(e.target.value)}
-								placeholder="Enter location..."
-								disabled={createMutation.isPending}
-								required
-							/>
-						</div>
+						<form.Field
+							name="location"
+							validators={{
+								onChange: ({ value }) =>
+									!value ? "Location is required" : undefined,
+							}}
+						>
+							{(field) => (
+								<div>
+									<Label htmlFor={field.name}>Location</Label>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="Enter location..."
+										disabled={createMutation.isPending}
+									/>
+									{field.state.meta.errors ? (
+										<div className="mt-1 text-red-500 text-sm">
+											{field.state.meta.errors[0]}
+										</div>
+									) : null}
+								</div>
+							)}
+						</form.Field>
 
-						<div>
-							<Label htmlFor="phone">Phone</Label>
-							<Input
-								id="phone"
-								value={phone}
-								onChange={(e) => setPhone(e.target.value)}
-								placeholder="+44"
-								disabled={createMutation.isPending}
-								required
-							/>
-						</div>
+						<form.Field
+							name="phone"
+							validators={{
+								onChange: ({ value }) => {
+									if (!value) return "Phone is required";
+									if (!value.startsWith("+44"))
+										return "Phone must start with +44";
+									if (value.length !== 13)
+										return "Phone must be 13 characters long";
+									return undefined;
+								},
+							}}
+						>
+							{(field) => (
+								<div>
+									<Label htmlFor={field.name}>Phone</Label>
+									<Input
+										id={field.name}
+										name={field.name}
+										value={field.state.value}
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										placeholder="+44"
+										disabled={createMutation.isPending}
+									/>
+									{field.state.meta.errors ? (
+										<div className="mt-1 text-red-500 text-sm">
+											{field.state.meta.errors[0]}
+										</div>
+									) : null}
+								</div>
+							)}
+						</form.Field>
 
 						<div className="flex space-x-2">
 							<Button
@@ -176,21 +261,22 @@ function NewListingRoute() {
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={
-									createMutation.isPending ||
-									!title.trim() ||
-									!description.trim() ||
-									!location.trim()
-								}
+							<form.Subscribe
+								selector={(state) => [state.canSubmit, state.isSubmitting]}
 							>
-								{createMutation.isPending ? (
-									<Loader2 className="h-4 w-4 animate-spin" />
-								) : (
-									"Create Listing"
+								{([canSubmit, isSubmitting]) => (
+									<Button
+										type="submit"
+										disabled={!canSubmit || createMutation.isPending}
+									>
+										{createMutation.isPending || isSubmitting ? (
+											<Loader2 className="h-4 w-4 animate-spin" />
+										) : (
+											"Create Listing"
+										)}
+									</Button>
 								)}
-							</Button>
+							</form.Subscribe>
 						</div>
 					</form>
 				</CardContent>
