@@ -19,10 +19,12 @@ export async function compressAndUploadImage(
 	imageBuffer: Buffer,
 	fileName: string,
 	listingId: string,
+	isMainImage = false,
 	quality = 80,
 ): Promise<string> {
 	const fileExtension = fileName.split(".").pop()?.toLowerCase();
-	const uniqueFileName = `${randomUUID()}.webp`; // Convert all to WebP for consistency
+	const prefix = isMainImage ? "main_" : "";
+	const uniqueFileName = `${prefix}${randomUUID()}.webp`; // Convert all to WebP for consistency
 	const bucketName = process.env.DO_SPACES_BUCKET!;
 
 	// Compress image using Sharp
@@ -71,15 +73,21 @@ export async function getListingImages(listingId: string): Promise<string[]> {
 			return [];
 		}
 
-		// Convert S3 keys to CDN URLs
-		const imageUrls = data.Contents.filter(
-			(obj) => obj.Key && obj.Key !== prefix,
-		) // Exclude folder itself
-			.map(
-				(obj) =>
-					`https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/${obj.Key}`,
-			)
-			.sort(); // Sort for consistent ordering
+		// Convert S3 keys to CDN URLs and sort with main image first
+		const imageUrls = data.Contents
+			.filter(obj => obj.Key && obj.Key !== prefix) // Exclude folder itself
+			.map(obj => ({
+				url: `https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/${obj.Key}`,
+				key: obj.Key!,
+				isMain: obj.Key!.includes('/main_')
+			}))
+			.sort((a, b) => {
+				// Main image first, then alphabetical
+				if (a.isMain && !b.isMain) return -1;
+				if (!a.isMain && b.isMain) return 1;
+				return a.key.localeCompare(b.key);
+			})
+			.map(item => item.url);
 
 		return imageUrls;
 	} catch (error) {

@@ -71,6 +71,7 @@ export const listingRouter = router({
 						}),
 					)
 					.optional(),
+				mainImageIndex: z.number().int().min(0).optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -90,9 +91,12 @@ export const listingRouter = router({
 
 			// Upload and compress images using the listing ID for folder structure
 			if (input.files && input.files.length > 0) {
-				const uploadPromises = input.files.map(async (file) => {
+				const mainImageIndex = input.mainImageIndex ?? 0; // Default to first image if not specified
+				
+				const uploadPromises = input.files.map(async (file, index) => {
 					const buffer = Buffer.from(file.data, "base64");
-					return compressAndUploadImage(buffer, file.name, listingId);
+					const isMainImage = index === mainImageIndex;
+					return compressAndUploadImage(buffer, file.name, listingId, isMainImage);
 				});
 
 				await Promise.all(uploadPromises);

@@ -66,8 +66,12 @@ function NewListingRoute() {
 	}, [session, isPending]);
 
 	const [files, setFiles] = useState<File[] | undefined>();
+	const [mainImageIndex, setMainImageIndex] = useState<number>(0);
+
 	const handleDrop = (files: File[]) => {
 		setFiles(files);
+		// Reset main image index if files change
+		setMainImageIndex(0);
 	};
 
 	const createMutation = useMutation(
@@ -112,6 +116,7 @@ function NewListingRoute() {
 			createMutation.mutate({
 				...value,
 				files: fileData.length > 0 ? fileData : undefined,
+				mainImageIndex: fileData.length > 0 ? mainImageIndex : undefined,
 			});
 
 			formApi.reset();
@@ -179,6 +184,7 @@ function NewListingRoute() {
 						</form.Field>
 
 						<div>
+							<Label>Images</Label>
 							<Dropzone
 								maxFiles={3}
 								onDrop={handleDrop}
@@ -188,6 +194,48 @@ function NewListingRoute() {
 								<DropzoneEmptyState />
 								<DropzoneContent />
 							</Dropzone>
+
+							{/* Image Preview and Main Selection */}
+							{files && files.length > 0 && (
+								<div className="mt-4">
+									<Label className="font-medium text-sm">
+										Select Main Image (will appear first in listings)
+									</Label>
+									<div className="mt-2 grid grid-cols-3 gap-3">
+										{files.map((file, index) => (
+											<div key={file.name} className="relative">
+												<div
+													className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
+														index === mainImageIndex
+															? "border-blue-500 bg-blue-50"
+															: "border-gray-200 hover:border-gray-300"
+													}`}
+													onClick={() => setMainImageIndex(index)}
+												>
+													<img
+														src={URL.createObjectURL(file)}
+														alt={`Preview ${index + 1}`}
+														className="h-20 w-full rounded object-cover"
+													/>
+													<div className="mt-1 text-center">
+														<span className="block truncate text-gray-600 text-xs">
+															{file.name}
+														</span>
+													</div>
+												</div>
+												{index === mainImageIndex && (
+													<div className="-top-2 -right-2 absolute flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 font-bold text-white text-xs">
+														★
+													</div>
+												)}
+											</div>
+										))}
+									</div>
+									<p className="mt-2 text-gray-500 text-xs">
+										Click on an image to set it as the main image
+									</p>
+								</div>
+							)}
 						</div>
 
 						<form.Field name="location">
