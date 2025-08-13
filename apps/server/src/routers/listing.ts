@@ -114,7 +114,18 @@ export const listingRouter = router({
 				location: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				imagesToDelete: z.array(z.string().url()).optional(),
-				newMainImageUrl: z.string().url().optional(),
+				newMainImageUrl: z.string().optional(),
+				mainImageIsNewFile: z.boolean().optional(),
+				mainImageNewFileIndex: z.number().int().min(0).optional(),
+				newFiles: z
+					.array(
+						z.object({
+							name: z.string(),
+							type: z.string(),
+							data: z.string(),
+						}),
+					)
+					.optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -153,9 +164,26 @@ export const listingRouter = router({
 				}
 			}
 
+			// Upload new images if provided
+			let newImageUrls: string[] = [];
+			if (input.newFiles && input.newFiles.length > 0) {
+				const uploadPromises = input.newFiles.map(async (file) => {
+					const buffer = Buffer.from(file.data, "base64");
+					return compressAndUploadImage(buffer, file.name, input.id, false);
+				});
+
+				newImageUrls = await Promise.all(uploadPromises);
+			}
+
 			// Update main image if specified and it's not being deleted
 			if (input.newMainImageUrl && (!input.imagesToDelete || !input.imagesToDelete.includes(input.newMainImageUrl))) {
-				await changeMainImage(input.id, input.newMainImageUrl);
+				if (input.mainImageIsNewFile && input.mainImageNewFileIndex !== undefined && newImageUrls.length > input.mainImageNewFileIndex) {
+					// New file selected as main image
+					await changeMainImage(input.id, newImageUrls[input.mainImageNewFileIndex]);
+				} else if (!input.mainImageIsNewFile) {
+					// Existing image URL
+					await changeMainImage(input.id, input.newMainImageUrl);
+				}
 			}
 
 			// Update listing details

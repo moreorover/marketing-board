@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, X } from "lucide-react";
+import { Loader2, Star, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Dropzone,
+	DropzoneContent,
+	DropzoneEmptyState,
+} from "@/components/ui/shadcn-io/dropzone";
 import { Textarea } from "@/components/ui/textarea";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
@@ -39,10 +44,12 @@ function EditListingRoute() {
 
 	const [selectedMainImageUrl, setSelectedMainImageUrl] = useState<string>("");
 	const [deletedImages, setDeletedImages] = useState<Set<string>>(new Set());
+	const [newFiles, setNewFiles] = useState<File[]>([]);
 	const [pendingImageOperations, setPendingImageOperations] = useState<{
 		deleteImages: string[];
 		mainImageUrl: string | null;
-	}>({ deleteImages: [], mainImageUrl: null });
+		newFiles: File[];
+	}>({ deleteImages: [], mainImageUrl: null, newFiles: [] });
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
@@ -91,7 +98,6 @@ function EditListingRoute() {
 		}
 	}, [selectedMainImageUrl, deletedImages, availableImages]);
 
-
 	const updateListingMutation = useMutation(
 		trpc.listing.update.mutationOptions({
 			onSuccess: () => {
@@ -114,17 +120,77 @@ function EditListingRoute() {
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
 			try {
+				// Convert new files to base64 data
+				let fileData: { name: string; type: string; data: string }[] = [];
+				if (pendingImageOperations.newFiles.length > 0) {
+					fileData = await Promise.all(
+						pendingImageOperations.newFiles.map(async (file) => {
+							return new Promise<{ name: string; type: string; data: string }>(
+								(resolve) => {
+									const reader = new FileReader();
+									reader.onloadend = () => {
+										const base64String = (reader.result as string).split(
+											",",
+										)[1];
+										resolve({
+											name: file.name,
+											type: file.type,
+											data: base64String,
+										});
+									};
+									reader.readAsDataURL(file);
+								},
+							);
+						}),
+					);
+				}
+
+				// Determine main image info
+				let mainImageInfo: {
+					newMainImageUrl?: string;
+					mainImageIsNewFile?: boolean;
+					mainImageNewFileIndex?: number;
+				} = {};
+
+				if (
+					pendingImageOperations.mainImageUrl &&
+					pendingImageOperations.mainImageUrl !== availableImages[0]?.url
+				) {
+					// Check if main image is a new file
+					const isNewFile =
+						pendingImageOperations.mainImageUrl.startsWith("blob:");
+					if (isNewFile) {
+						// Find the index of the selected file
+						const selectedFileIndex = pendingImageOperations.newFiles.findIndex(
+							(file) =>
+								URL.createObjectURL(file) ===
+								pendingImageOperations.mainImageUrl,
+						);
+						mainImageInfo = {
+							newMainImageUrl: pendingImageOperations.mainImageUrl,
+							mainImageIsNewFile: true,
+							mainImageNewFileIndex:
+								selectedFileIndex >= 0 ? selectedFileIndex : 0,
+						};
+					} else {
+						// Existing image
+						mainImageInfo = {
+							newMainImageUrl: pendingImageOperations.mainImageUrl,
+							mainImageIsNewFile: false,
+						};
+					}
+				}
+
 				// Update listing with all operations in a single call
 				await updateListingMutation.mutateAsync({
 					id: listingId,
 					...value,
-					imagesToDelete: pendingImageOperations.deleteImages.length > 0 
-						? pendingImageOperations.deleteImages 
-						: undefined,
-					newMainImageUrl: pendingImageOperations.mainImageUrl && 
-						pendingImageOperations.mainImageUrl !== availableImages[0]?.url
-						? pendingImageOperations.mainImageUrl
-						: undefined,
+					imagesToDelete:
+						pendingImageOperations.deleteImages.length > 0
+							? pendingImageOperations.deleteImages
+							: undefined,
+					newFiles: fileData.length > 0 ? fileData : undefined,
+					...mainImageInfo,
 				});
 			} catch (error) {
 				// Error handling is done in mutation options
@@ -144,16 +210,22 @@ function EditListingRoute() {
 
 	// Initialize pending operations when images first load
 	useEffect(() => {
-		if (listing && images.length > 0 && pendingImageOperations.mainImageUrl === null) {
+		if (
+			listing &&
+			images.length > 0 &&
+			pendingImageOperations.mainImageUrl === null
+		) {
 			setPendingImageOperations({
 				deleteImages: [],
 				mainImageUrl: images[0]?.url || null,
+				newFiles: [],
 			});
 		}
 	}, [listing, images, pendingImageOperations.mainImageUrl]);
 
 	const handleDeleteImage = (imageUrl: string) => {
-		if (availableImages.length <= 1) {
+		const totalImages = availableImages.length + newFiles.length;
+		if (totalImages <= 1) {
 			toast.error("Cannot delete the last image from a listing");
 			return;
 		}
@@ -169,7 +241,9 @@ function EditListingRoute() {
 
 		// If the deleted image was the selected main image, select the first available image
 		if (selectedMainImageUrl === imageUrl) {
-			const remainingImages = availableImages.filter((img) => img.url !== imageUrl);
+			const remainingImages = availableImages.filter(
+				(img) => img.url !== imageUrl,
+			);
 			if (remainingImages.length > 0) {
 				const newMainImageUrl = remainingImages[0].url;
 				setSelectedMainImageUrl(newMainImageUrl);
@@ -177,7 +251,33 @@ function EditListingRoute() {
 					...prev,
 					mainImageUrl: newMainImageUrl,
 				}));
+			} else if (newFiles.length > 0) {
+				// If no existing images remain, select first new file
+				const firstNewFileUrl = URL.createObjectURL(newFiles[0]);
+				setSelectedMainImageUrl(firstNewFileUrl);
+				setPendingImageOperations((prev) => ({
+					...prev,
+					mainImageUrl: firstNewFileUrl,
+				}));
 			}
+		}
+	};
+
+	const handleFilesUpload = (files: File[]) => {
+		setNewFiles(files);
+		setPendingImageOperations((prev) => ({
+			...prev,
+			newFiles: files,
+		}));
+
+		// If no main image is selected and we have new files, select the first one
+		if (!selectedMainImageUrl && files.length > 0) {
+			const firstFileUrl = URL.createObjectURL(files[0]);
+			setSelectedMainImageUrl(firstFileUrl);
+			setPendingImageOperations((prev) => ({
+				...prev,
+				mainImageUrl: firstFileUrl,
+			}));
 		}
 	};
 
@@ -311,17 +411,33 @@ function EditListingRoute() {
 							)}
 						</form.Field>
 
+						{/* Image Upload */}
+						<div>
+							<Label>Add More Images</Label>
+							<Dropzone
+								maxFiles={5}
+								onDrop={handleFilesUpload}
+								onError={console.error}
+								src={newFiles}
+							>
+								<DropzoneEmptyState />
+								<DropzoneContent />
+							</Dropzone>
+						</div>
+
 						{/* Main Image Selection */}
-						{availableImages.length > 0 && (
+						{(availableImages.length > 0 || newFiles.length > 0) && (
 							<div>
 								<Label className="font-medium text-sm">
-									{availableImages.length > 1
-										? "Select Main Image & Delete Images"
-										: "Current Image"}
+									Select Main Image & Manage Images
 								</Label>
-								<div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+								<div className="mt-3 space-y-3">
+									{/* Existing Images */}
 									{availableImages.map((image, index) => (
-										<div key={image.url} className="group relative">
+										<div
+											key={image.url}
+											className="flex items-center gap-3 rounded-lg border p-3"
+										>
 											<div
 												className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
 													selectedMainImageUrl === image.url
@@ -329,67 +445,193 @@ function EditListingRoute() {
 														: "border-gray-200 hover:border-gray-300"
 												}`}
 												onClick={() => {
-												setSelectedMainImageUrl(image.url);
-												setPendingImageOperations((prev) => ({
-													...prev,
-													mainImageUrl: image.url,
-												}));
-											}}
+													setSelectedMainImageUrl(image.url);
+													setPendingImageOperations((prev) => ({
+														...prev,
+														mainImageUrl: image.url,
+													}));
+												}}
 											>
 												<img
 													src={image.url}
 													alt={`Listing img ${index + 1}`}
-													className="h-32 w-full rounded object-cover"
+													className="h-20 w-20 rounded object-cover"
 												/>
-												<div className="mt-2 text-center">
-													<span className="text-gray-500 text-xs">
+											</div>
+
+											<div className="flex-1">
+												<div className="flex items-center gap-2">
+													<span className="font-medium text-sm">
 														Image {index + 1}
 													</span>
-													{index === 0 && (
-														<span className="ml-1 font-medium text-blue-600 text-xs">
-															(Current Main)
-														</span>
+													{selectedMainImageUrl === image.url && (
+														<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
+															<Star className="h-3 w-3 fill-current" />
+															Main
+														</div>
 													)}
+													{index === 0 &&
+														!newFiles.length &&
+														selectedMainImageUrl !== image.url && (
+															<span className="font-medium text-blue-600 text-xs">
+																(Current Main)
+															</span>
+														)}
 												</div>
 											</div>
 
-											{/* Main image indicator */}
-											{selectedMainImageUrl === image.url &&
-												availableImages.length > 1 && (
-													<div className="-right-2 -top-2 absolute z-10 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 font-bold text-white text-xs">
-														★
-													</div>
+											<div className="flex gap-2">
+												{selectedMainImageUrl !== image.url && (
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => {
+															setSelectedMainImageUrl(image.url);
+															setPendingImageOperations((prev) => ({
+																...prev,
+																mainImageUrl: image.url,
+															}));
+														}}
+														type="button"
+													>
+														<Star className="mr-1 h-4 w-4" />
+														Set as Main
+													</Button>
 												)}
 
-											{/* Delete button - only show if more than one image */}
-											{availableImages.length > 1 && (
-												<Button
-													variant="destructive"
-													size="icon"
-													className="-right-1 -top-1 absolute z-20 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-													onClick={(e) => {
-														e.stopPropagation();
-														handleDeleteImage(image.url);
-													}}
-													type="button"
-												>
-													<X className="h-3 w-3" />
-												</Button>
-											)}
+												{availableImages.length + newFiles.length > 1 && (
+													<Button
+														variant="destructive"
+														size="sm"
+														onClick={() => handleDeleteImage(image.url)}
+														type="button"
+													>
+														<Trash2 className="mr-1 h-4 w-4" />
+														Delete
+													</Button>
+												)}
+											</div>
 										</div>
 									))}
+
+									{/* New Files */}
+									{newFiles.map((file, index) => {
+										const fileUrl = URL.createObjectURL(file);
+										return (
+											<div
+												key={file.name}
+												className="flex items-center gap-3 rounded-lg border p-3"
+											>
+												<div
+													className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
+														selectedMainImageUrl === fileUrl
+															? "border-blue-500 bg-blue-50"
+															: "border-gray-200 hover:border-gray-300"
+													}`}
+													onClick={() => {
+														setSelectedMainImageUrl(fileUrl);
+														setPendingImageOperations((prev) => ({
+															...prev,
+															mainImageUrl: fileUrl,
+														}));
+													}}
+												>
+													<img
+														src={fileUrl}
+														alt={`New img ${index + 1}`}
+														className="h-20 w-20 rounded object-cover"
+													/>
+												</div>
+
+												<div className="flex-1">
+													<div className="flex items-center gap-2">
+														<span className="font-medium text-sm">
+															{file.name}
+														</span>
+														{selectedMainImageUrl === fileUrl && (
+															<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
+																<Star className="h-3 w-3 fill-current" />
+																Main
+															</div>
+														)}
+													</div>
+												</div>
+
+												<div className="flex gap-2">
+													{selectedMainImageUrl !== fileUrl && (
+														<>
+															<Button
+																variant="outline"
+																size="sm"
+																onClick={() => {
+																	setSelectedMainImageUrl(fileUrl);
+																	setPendingImageOperations((prev) => ({
+																		...prev,
+																		mainImageUrl: fileUrl,
+																	}));
+																}}
+																type="button"
+															>
+																<Star className="mr-1 h-4 w-4" />
+																Set as Main
+															</Button>
+															<span className="ml-1 rounded bg-green-100 px-1.5 py-0.5 font-medium text-green-700 text-xs">
+																New
+															</span>
+														</>
+													)}
+
+													{availableImages.length + newFiles.length > 1 && (
+														<Button
+															variant="destructive"
+															size="sm"
+															onClick={() => {
+																const updatedFiles = newFiles.filter(
+																	(_, i) => i !== index,
+																);
+																setNewFiles(updatedFiles);
+																setPendingImageOperations((prev) => ({
+																	...prev,
+																	newFiles: updatedFiles,
+																}));
+
+																// If deleted file was main image, select another
+																if (selectedMainImageUrl === fileUrl) {
+																	if (availableImages.length > 0) {
+																		setSelectedMainImageUrl(
+																			availableImages[0].url,
+																		);
+																		setPendingImageOperations((prev) => ({
+																			...prev,
+																			mainImageUrl: availableImages[0].url,
+																		}));
+																	} else if (updatedFiles.length > 0) {
+																		const newMainUrl = URL.createObjectURL(
+																			updatedFiles[0],
+																		);
+																		setSelectedMainImageUrl(newMainUrl);
+																		setPendingImageOperations((prev) => ({
+																			...prev,
+																			mainImageUrl: newMainUrl,
+																		}));
+																	}
+																}
+															}}
+															type="button"
+														>
+															<Trash2 className="mr-1 h-4 w-4" />
+															Delete
+														</Button>
+													)}
+												</div>
+											</div>
+										);
+									})}
 								</div>
-								{availableImages.length > 1 && (
-									<p className="mt-3 text-gray-500 text-xs">
-										Click on an image to set it as the main image. Hover over an
-										image to see the delete button.
-									</p>
-								)}
-								{availableImages.length === 1 && (
-									<p className="mt-3 text-gray-500 text-xs">
-										You need at least one image for your listing.
-									</p>
-								)}
+								<p className="mt-3 text-gray-500 text-xs">
+									Click on an image or use the "Set as Main" button to select
+									the main image. Use the "Delete" button to remove images.
+								</p>
 							</div>
 						)}
 
