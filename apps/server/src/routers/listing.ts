@@ -68,10 +68,9 @@ export const listingRouter = router({
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ input }) => {
 			const listingResult = await db.query.listing.findFirst({
+				where: eq(listing.id, input.listingId),
 				with: {
-					images: {
-						where: eq(listingImage.listingId, input.listingId),
-					},
+					images: {},
 				},
 			});
 
@@ -131,14 +130,25 @@ export const listingRouter = router({
 
 			const listingId = createdListing[0].id;
 
-			// Upload and compress images using the listing ID for folder structure
+			// Upload images and save to database
 			if (input.files && input.files.length > 0) {
-				const uploadPromises = input.files.map(async (file) => {
-					const buffer = Buffer.from(file.data, "base64");
-					return uploadImage(buffer, listingId);
-				});
+				const mainImageIndex = input.mainImageIndex ?? 0;
 
-				await Promise.all(uploadPromises);
+				for (let i = 0; i < input.files.length; i++) {
+					const file = input.files[i];
+					const buffer = Buffer.from(file.data, "base64");
+					const isMainImage = i === mainImageIndex;
+
+					// Upload to S3 and get object key
+					const objectKey = await uploadImage(buffer, listingId);
+
+					// Save image metadata to database
+					await db.insert(listingImage).values({
+						listingId,
+						objectKey,
+						isMain: isMainImage,
+					});
+				}
 			}
 
 			return createdListing;

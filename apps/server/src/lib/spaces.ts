@@ -24,7 +24,8 @@ const spacesClient = new S3Client({
 export async function uploadImage(
 	imageBuffer: Buffer,
 	listingId: string,
-	quality = 80,
+	quality = 100,
+	nearLossless = true,
 ): Promise<string> {
 	const uniqueFileName = `${randomUUID()}.webp`;
 	const bucketName = process.env.DO_SPACES_BUCKET!;
@@ -35,7 +36,7 @@ export async function uploadImage(
 			fit: "inside",
 			withoutEnlargement: true,
 		})
-		.webp({ quality })
+		.webp({ quality, nearLossless })
 		.toBuffer();
 
 	const objectKey = `listings/${listingId}/${uniqueFileName}`;
