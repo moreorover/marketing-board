@@ -143,8 +143,8 @@ function EditListingRoute() {
 
 				// Calculate which existing images to keep (not deleted)
 				const keepImages = availableImages
-					.filter(img => !deletedImages.has(img.url))
-					.map(img => img.url);
+					.filter((img) => !deletedImages.has(img.url))
+					.map((img) => img.url);
 
 				// Determine main image info
 				let mainImageInfo: {
@@ -155,18 +155,23 @@ function EditListingRoute() {
 
 				const willHaveImages = keepImages.length > 0 || newFiles.length > 0;
 
-				if (selectedMainImageUrl && willHaveImages && selectedMainImageUrl !== availableImages[0]?.url) {
+				if (
+					selectedMainImageUrl &&
+					willHaveImages &&
+					selectedMainImageUrl !== availableImages[0]?.url
+				) {
 					// Check if main image is a new file
 					const isNewFile = selectedMainImageUrl.startsWith("blob:");
 					if (isNewFile) {
 						// Find the index of the selected file
 						const selectedFileIndex = newFiles.findIndex(
-							(file, index) => newFileUrls[index] === selectedMainImageUrl
+							(file, index) => newFileUrls[index] === selectedMainImageUrl,
 						);
 						mainImageInfo = {
 							newMainImageUrl: selectedMainImageUrl,
 							mainImageIsNewFile: true,
-							mainImageNewFileIndex: selectedFileIndex >= 0 ? selectedFileIndex : 0,
+							mainImageNewFileIndex:
+								selectedFileIndex >= 0 ? selectedFileIndex : 0,
 						};
 					} else {
 						// Existing image
@@ -551,7 +556,9 @@ function EditListingRoute() {
 															// If deleted file was main image, select another
 															if (selectedMainImageUrl === fileUrl) {
 																if (availableImages.length > 0) {
-																	setSelectedMainImageUrl(availableImages[0].url);
+																	setSelectedMainImageUrl(
+																		availableImages[0].url,
+																	);
 																} else if (updatedUrls.length > 0) {
 																	setSelectedMainImageUrl(updatedUrls[0]);
 																}
