@@ -7,6 +7,8 @@ import {
 	changeMainImage,
 	compressAndUploadImage,
 	deleteImage,
+	extractKeyFromUrl,
+	generateSignedImageUrls,
 	getListingImages,
 } from "../lib/spaces";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
@@ -15,13 +17,14 @@ export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
 		const listings = await db.select().from(listing);
 
-		// Get images for each listing from S3
+		// Get images for each listing from S3 with signed URLs
 		const listingsWithImages = await Promise.all(
 			listings.map(async (listingItem) => {
-				const images = await getListingImages(listingItem.id);
+				const imageKeys = await getListingImages(listingItem.id);
+				const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
 				return {
 					...listingItem,
-					images: images.map((url) => ({ url })), // Convert to expected format
+					images: imageKeys.map((key) => ({ url: signedUrls[key] || '' })),
 				};
 			}),
 		);
@@ -50,12 +53,13 @@ export const listingRouter = router({
 			}
 
 			const listingItem = listingResult[0];
-			const images = await getListingImages(listingItem.id);
+			const imageKeys = await getListingImages(listingItem.id);
+			const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
 
 			return [
 				{
 					...listingItem,
-					images: images.map((url) => ({ url })),
+					images: imageKeys.map((key) => ({ url: signedUrls[key] || '' })),
 				},
 			];
 		}),
@@ -123,7 +127,7 @@ export const listingRouter = router({
 				description: z.string().min(1),
 				location: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
-				keepImages: z.array(z.string().url()).optional(),
+				keepImages: z.array(z.string()).optional(),
 				newMainImageUrl: z.string().optional(),
 				mainImageIsNewFile: z.boolean().optional(),
 				mainImageNewFileIndex: z.number().int().min(0).optional(),
@@ -157,16 +161,16 @@ export const listingRouter = router({
 			// Get current images to determine what needs to be deleted
 			const currentImages = await getListingImages(input.id);
 
-			// Determine which images to delete by comparing current vs keepImages
-			const keepImages = input.keepImages || [];
+			// Convert keepImages URLs to keys if needed
+			const keepImageKeys = (input.keepImages || []).map(extractKeyFromUrl);
 			const imagesToDelete = currentImages.filter(
-				(url) => !keepImages.includes(url),
+				(key) => !keepImageKeys.includes(key),
 			);
 
 			// Delete images that are no longer wanted
 			if (imagesToDelete.length > 0) {
-				for (const imageUrl of imagesToDelete) {
-					await deleteImage(imageUrl);
+				for (const imageKey of imagesToDelete) {
+					await deleteImage(imageKey);
 				}
 			}
 
@@ -182,14 +186,14 @@ export const listingRouter = router({
 			}
 
 			// Get remaining images after deletions and new uploads
-			const totalRemainingImages = keepImages.length + newImageUrls.length;
+			const totalRemainingImages = keepImageKeys.length + newImageUrls.length;
 
 			// Update main image if specified and there will be images remaining
 			if (
 				input.newMainImageUrl &&
-				totalRemainingImages > 0 &&
-				!imagesToDelete.includes(input.newMainImageUrl)
+				totalRemainingImages > 0
 			) {
+				const newMainImageKey = extractKeyFromUrl(input.newMainImageUrl);
 				if (
 					input.mainImageIsNewFile &&
 					input.mainImageNewFileIndex !== undefined &&
@@ -200,9 +204,9 @@ export const listingRouter = router({
 						input.id,
 						newImageUrls[input.mainImageNewFileIndex],
 					);
-				} else if (!input.mainImageIsNewFile) {
-					// Existing image URL
-					await changeMainImage(input.id, input.newMainImageUrl);
+				} else if (!input.mainImageIsNewFile && !imagesToDelete.includes(newMainImageKey)) {
+					// Existing image key
+					await changeMainImage(input.id, newMainImageKey);
 				}
 			}
 

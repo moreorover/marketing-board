@@ -1,10 +1,12 @@
 import {
 	CopyObjectCommand,
 	DeleteObjectCommand,
+	GetObjectCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import sharp from "sharp";
 
@@ -50,13 +52,13 @@ export async function compressAndUploadImage(
 		Key: `listings/${listingId}/${uniqueFileName}`,
 		Body: compressedBuffer,
 		ContentType: "image/webp",
-		ACL: "public-read" as const,
+		// Removed ACL to make private
 	};
 
 	await spacesClient.send(new PutObjectCommand(uploadParams));
 
-	// Return the CDN URL
-	return `https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/listings/${listingId}/${uniqueFileName}`;
+	// Return the object key instead of direct URL since we'll use signed URLs
+	return `listings/${listingId}/${uniqueFileName}`;
 }
 
 export async function getListingImages(listingId: string): Promise<string[]> {
@@ -75,13 +77,13 @@ export async function getListingImages(listingId: string): Promise<string[]> {
 			return [];
 		}
 
-		// Convert S3 keys to CDN URLs and sort with main image first
-		const imageUrls = data.Contents
-			.filter(obj => obj.Key && obj.Key !== prefix) // Exclude folder itself
-			.map(obj => ({
-				url: `https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/${obj.Key}`,
+		// Return S3 keys sorted with main image first
+		const imageKeys = data.Contents.filter(
+			(obj) => obj.Key && obj.Key !== prefix,
+		) // Exclude folder itself
+			.map((obj) => ({
 				key: obj.Key!,
-				isMain: obj.Key!.includes('/main_')
+				isMain: obj.Key!.includes("/main_"),
 			}))
 			.sort((a, b) => {
 				// Main image first, then alphabetical
@@ -89,12 +91,83 @@ export async function getListingImages(listingId: string): Promise<string[]> {
 				if (!a.isMain && b.isMain) return 1;
 				return a.key.localeCompare(b.key);
 			})
-			.map(item => item.url);
+			.map((item) => item.key);
 
-		return imageUrls;
+		return imageKeys;
 	} catch (error) {
 		console.error("Failed to list images:", error);
 		return [];
+	}
+}
+
+// Generate signed URL for private images
+export async function generateSignedImageUrl(
+	imageKey: string,
+	expiresIn = 3600,
+): Promise<string> {
+	const bucketName = process.env.DO_SPACES_BUCKET!;
+
+	const command = new GetObjectCommand({
+		Bucket: bucketName,
+		Key: imageKey,
+	});
+
+	try {
+		const signedUrl = await getSignedUrl(spacesClient, command, { expiresIn });
+		return signedUrl;
+	} catch (error) {
+		console.error("Failed to generate signed URL:", error);
+		throw new Error("Failed to generate signed URL");
+	}
+}
+
+// Generate signed URLs for multiple images
+export async function generateSignedImageUrls(
+	imageKeys: string[],
+	expiresIn = 3600,
+): Promise<{ [key: string]: string }> {
+	const signedUrls: { [key: string]: string } = {};
+
+	await Promise.all(
+		imageKeys.map(async (key) => {
+			try {
+				signedUrls[key] = await generateSignedImageUrl(key, expiresIn);
+			} catch (error) {
+				console.error(`Failed to generate signed URL for ${key}:`, error);
+			}
+		}),
+	);
+
+	return signedUrls;
+}
+
+// Extract S3 key from URL (either signed URL or CDN URL)
+export function extractKeyFromUrl(url: string): string {
+	try {
+		const urlObj = new URL(url);
+
+		// For signed URLs, the key is in the pathname
+		if (urlObj.hostname.includes(".digitaloceanspaces.com")) {
+			return urlObj.pathname.substring(1); // Remove leading slash
+		}
+
+		// For CDN URLs, extract from pathname
+		if (urlObj.hostname.includes(".cdn.digitaloceanspaces.com")) {
+			return urlObj.pathname.substring(1); // Remove leading slash
+		}
+
+		// If it's already a key (doesn't start with http), return as is
+		if (!url.startsWith("http")) {
+			return url;
+		}
+
+		throw new Error("Unable to extract key from URL");
+	} catch (error) {
+		// If URL parsing fails, assume it's already a key
+		if (!url.startsWith("http")) {
+			return url;
+		}
+		throw new Error(`Invalid URL format: ${url}`);
 	}
 }
 
@@ -122,22 +195,25 @@ export async function createThumbnail(
 			Key: `listings/${listingId}/thumbs/${uniqueFileName}`,
 			Body: thumbnailBuffer,
 			ContentType: "image/webp",
-			ACL: "public-read" as const,
+			// Removed ACL to make private
 		};
 
 		await spacesClient.send(new PutObjectCommand(uploadParams));
 
-		return `https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/listings/${listingId}/thumbs/${uniqueFileName}`;
+		return `listings/${listingId}/thumbs/${uniqueFileName}`;
 	} catch (error) {
 		console.error("Thumbnail creation failed:", error);
 		throw new Error("Failed to create thumbnail");
 	}
 }
 
-export async function changeMainImage(listingId: string, newMainImageUrl: string): Promise<void> {
+export async function changeMainImage(
+	listingId: string,
+	newMainImageKey: string,
+): Promise<void> {
 	const bucketName = process.env.DO_SPACES_BUCKET!;
 	const prefix = `listings/${listingId}/`;
-	
+
 	try {
 		// Get all images for this listing
 		const listParams = {
@@ -151,97 +227,102 @@ export async function changeMainImage(listingId: string, newMainImageUrl: string
 			throw new Error("No images found for listing");
 		}
 
-		// Find the new main image key from URL
-		const newMainImageKey = data.Contents.find(obj => {
-			if (!obj.Key) return false;
-			const imageUrl = `https://${bucketName}.${process.env.DO_SPACES_REGION || "nyc3"}.cdn.digitaloceanspaces.com/${obj.Key}`;
-			return imageUrl === newMainImageUrl;
-		})?.Key;
+		// Validate that the new main image key exists
+		const keyExists = data.Contents.some((obj) => obj.Key === newMainImageKey);
 
-		if (!newMainImageKey) {
+		if (!keyExists) {
 			throw new Error("New main image not found in listing images");
 		}
 
 		// Remove main_ prefix from current main image(s)
 		const renamePromises: Promise<void>[] = [];
-		
+
 		for (const obj of data.Contents) {
 			if (!obj.Key || obj.Key === prefix) continue;
 
-			const fileName = obj.Key.split('/').pop()!;
-			
-			if (fileName.startsWith('main_') && obj.Key !== newMainImageKey) {
+			const fileName = obj.Key.split("/").pop()!;
+
+			if (fileName.startsWith("main_") && obj.Key !== newMainImageKey) {
 				// Remove main_ prefix from current main image
-				const newKey = obj.Key.replace('/main_', '/');
-				
+				const newKey = obj.Key.replace("/main_", "/");
+
 				// Copy object with new key
-				await spacesClient.send(new CopyObjectCommand({
-					Bucket: bucketName,
-					CopySource: `${bucketName}/${obj.Key}`,
-					Key: newKey,
-					ACL: "public-read",
-				}));
+				await spacesClient.send(
+					new CopyObjectCommand({
+						Bucket: bucketName,
+						CopySource: `${bucketName}/${obj.Key}`,
+						Key: newKey,
+						// Removed ACL to keep private
+					}),
+				);
 
 				// Delete old object
 				renamePromises.push(
-					spacesClient.send(new DeleteObjectCommand({
-						Bucket: bucketName,
-						Key: obj.Key,
-					})).then(() => {})
+					spacesClient
+						.send(
+							new DeleteObjectCommand({
+								Bucket: bucketName,
+								Key: obj.Key,
+							}),
+						)
+						.then(() => {}),
 				);
 			}
 		}
 
 		// Add main_ prefix to new main image (if it doesn't already have it)
-		const newFileName = newMainImageKey.split('/').pop()!;
-		if (!newFileName.startsWith('main_')) {
-			const newKey = newMainImageKey.replace(newFileName, `main_${newFileName}`);
-			
+		const newFileName = newMainImageKey.split("/").pop()!;
+		if (!newFileName.startsWith("main_")) {
+			const newKey = newMainImageKey.replace(
+				newFileName,
+				`main_${newFileName}`,
+			);
+
 			// Copy object with main_ prefix
-			await spacesClient.send(new CopyObjectCommand({
-				Bucket: bucketName,
-				CopySource: `${bucketName}/${newMainImageKey}`,
-				Key: newKey,
-				ACL: "public-read",
-			}));
+			await spacesClient.send(
+				new CopyObjectCommand({
+					Bucket: bucketName,
+					CopySource: `${bucketName}/${newMainImageKey}`,
+					Key: newKey,
+					// Removed ACL to keep private
+				}),
+			);
 
 			// Delete old object
 			renamePromises.push(
-				spacesClient.send(new DeleteObjectCommand({
-					Bucket: bucketName,
-					Key: newMainImageKey,
-				})).then(() => {})
+				spacesClient
+					.send(
+						new DeleteObjectCommand({
+							Bucket: bucketName,
+							Key: newMainImageKey,
+						}),
+					)
+					.then(() => {}),
 			);
 		}
 
 		// Wait for all rename operations to complete
 		await Promise.all(renamePromises);
-		
 	} catch (error) {
 		console.error("Failed to change main image:", error);
 		throw new Error("Failed to change main image");
 	}
 }
 
-export async function deleteImage(imageUrl: string): Promise<void> {
+export async function deleteImage(imageKey: string): Promise<void> {
 	const bucketName = process.env.DO_SPACES_BUCKET!;
-	
-	try {
-		// Extract the key from the URL
-		// URL format: https://bucket.region.cdn.digitaloceanspaces.com/path/to/file
-		const urlParts = imageUrl.split('/');
-		const keyStartIndex = urlParts.findIndex(part => part.includes('.cdn.digitaloceanspaces.com')) + 1;
-		const key = urlParts.slice(keyStartIndex).join('/');
 
-		if (!key || !key.startsWith('listings/')) {
-			throw new Error("Invalid image URL or path");
+	try {
+		if (!imageKey || !imageKey.startsWith("listings/")) {
+			throw new Error("Invalid image key or path");
 		}
 
-		await spacesClient.send(new DeleteObjectCommand({
-			Bucket: bucketName,
-			Key: key,
-		}));
-		
+		await spacesClient.send(
+			new DeleteObjectCommand({
+				Bucket: bucketName,
+				Key: imageKey,
+			}),
+		);
 	} catch (error) {
 		console.error("Failed to delete image:", error);
 		throw new Error("Failed to delete image");
