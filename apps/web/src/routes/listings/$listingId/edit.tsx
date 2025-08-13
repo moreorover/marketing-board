@@ -1,7 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
@@ -38,6 +38,11 @@ function EditListingRoute() {
 	const navigate = Route.useNavigate();
 
 	const [selectedMainImageUrl, setSelectedMainImageUrl] = useState<string>("");
+	const [deletedImages, setDeletedImages] = useState<Set<string>>(new Set());
+	const [pendingImageOperations, setPendingImageOperations] = useState<{
+		deleteImages: string[];
+		mainImageUrl: string | null;
+	}>({ deleteImages: [], mainImageUrl: null });
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
@@ -65,23 +70,27 @@ function EditListingRoute() {
 		}
 	}, [isOwner]);
 
+	// Filter out deleted images
+	const availableImages = images.filter((img) => !deletedImages.has(img.url));
+
 	// Set initial main image (first image is main)
 	useEffect(() => {
-		if (images.length > 0 && !selectedMainImageUrl) {
-			setSelectedMainImageUrl(images[0].url);
+		if (availableImages.length > 0 && !selectedMainImageUrl) {
+			setSelectedMainImageUrl(availableImages[0].url);
 		}
-	}, [images, selectedMainImageUrl]);
+	}, [availableImages, selectedMainImageUrl]);
 
-	const updateMainImageMutation = useMutation(
-		trpc.listing.updateMainImage.mutationOptions({
-			onSuccess: () => {
-				toast.success("Main image updated successfully!");
-			},
-			onError: (error) => {
-				toast.error(error.message || "Failed to update main image.");
-			},
-		}),
-	);
+	// Reset selectedMainImageUrl if the selected image was deleted
+	useEffect(() => {
+		if (
+			selectedMainImageUrl &&
+			deletedImages.has(selectedMainImageUrl) &&
+			availableImages.length > 0
+		) {
+			setSelectedMainImageUrl(availableImages[0].url);
+		}
+	}, [selectedMainImageUrl, deletedImages, availableImages]);
+
 
 	const updateListingMutation = useMutation(
 		trpc.listing.update.mutationOptions({
@@ -105,23 +114,18 @@ function EditListingRoute() {
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
 			try {
-				// First update listing details
+				// Update listing with all operations in a single call
 				await updateListingMutation.mutateAsync({
 					id: listingId,
 					...value,
+					imagesToDelete: pendingImageOperations.deleteImages.length > 0 
+						? pendingImageOperations.deleteImages 
+						: undefined,
+					newMainImageUrl: pendingImageOperations.mainImageUrl && 
+						pendingImageOperations.mainImageUrl !== availableImages[0]?.url
+						? pendingImageOperations.mainImageUrl
+						: undefined,
 				});
-
-				// Then update main image if changed and there are multiple images
-				if (
-					images.length > 1 &&
-					selectedMainImageUrl &&
-					selectedMainImageUrl !== images[0]?.url
-				) {
-					await updateMainImageMutation.mutateAsync({
-						listingId,
-						newMainImageUrl: selectedMainImageUrl,
-					});
-				}
 			} catch (error) {
 				// Error handling is done in mutation options
 			}
@@ -137,6 +141,45 @@ function EditListingRoute() {
 			form.setFieldValue("phone", listing.phone);
 		}
 	}, [listing, form]);
+
+	// Initialize pending operations when images first load
+	useEffect(() => {
+		if (listing && images.length > 0 && pendingImageOperations.mainImageUrl === null) {
+			setPendingImageOperations({
+				deleteImages: [],
+				mainImageUrl: images[0]?.url || null,
+			});
+		}
+	}, [listing, images, pendingImageOperations.mainImageUrl]);
+
+	const handleDeleteImage = (imageUrl: string) => {
+		if (availableImages.length <= 1) {
+			toast.error("Cannot delete the last image from a listing");
+			return;
+		}
+
+		// Add to local deleted images set
+		setDeletedImages((prev) => new Set(prev.add(imageUrl)));
+
+		// Add to pending operations
+		setPendingImageOperations((prev) => ({
+			...prev,
+			deleteImages: [...prev.deleteImages, imageUrl],
+		}));
+
+		// If the deleted image was the selected main image, select the first available image
+		if (selectedMainImageUrl === imageUrl) {
+			const remainingImages = availableImages.filter((img) => img.url !== imageUrl);
+			if (remainingImages.length > 0) {
+				const newMainImageUrl = remainingImages[0].url;
+				setSelectedMainImageUrl(newMainImageUrl);
+				setPendingImageOperations((prev) => ({
+					...prev,
+					mainImageUrl: newMainImageUrl,
+				}));
+			}
+		}
+	};
 
 	if (sessionPending || listingQuery.isLoading) {
 		return (
@@ -269,21 +312,29 @@ function EditListingRoute() {
 						</form.Field>
 
 						{/* Main Image Selection */}
-						{images.length > 1 && (
+						{availableImages.length > 0 && (
 							<div>
 								<Label className="font-medium text-sm">
-									Select Main Image (will appear first in listings)
+									{availableImages.length > 1
+										? "Select Main Image & Delete Images"
+										: "Current Image"}
 								</Label>
 								<div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-									{images.map((image, index) => (
-										<div key={image.url} className="relative">
+									{availableImages.map((image, index) => (
+										<div key={image.url} className="group relative">
 											<div
 												className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
 													selectedMainImageUrl === image.url
 														? "border-blue-500 bg-blue-50"
 														: "border-gray-200 hover:border-gray-300"
 												}`}
-												onClick={() => setSelectedMainImageUrl(image.url)}
+												onClick={() => {
+												setSelectedMainImageUrl(image.url);
+												setPendingImageOperations((prev) => ({
+													...prev,
+													mainImageUrl: image.url,
+												}));
+											}}
 											>
 												<img
 													src={image.url}
@@ -301,17 +352,44 @@ function EditListingRoute() {
 													)}
 												</div>
 											</div>
-											{selectedMainImageUrl === image.url && (
-												<div className="-right-2 -top-2 absolute flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 font-bold text-white text-xs">
-													★
-												</div>
+
+											{/* Main image indicator */}
+											{selectedMainImageUrl === image.url &&
+												availableImages.length > 1 && (
+													<div className="-right-2 -top-2 absolute z-10 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 font-bold text-white text-xs">
+														★
+													</div>
+												)}
+
+											{/* Delete button - only show if more than one image */}
+											{availableImages.length > 1 && (
+												<Button
+													variant="destructive"
+													size="icon"
+													className="-right-1 -top-1 absolute z-20 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+													onClick={(e) => {
+														e.stopPropagation();
+														handleDeleteImage(image.url);
+													}}
+													type="button"
+												>
+													<X className="h-3 w-3" />
+												</Button>
 											)}
 										</div>
 									))}
 								</div>
-								<p className="mt-3 text-gray-500 text-xs">
-									Click on an image to set it as the main image
-								</p>
+								{availableImages.length > 1 && (
+									<p className="mt-3 text-gray-500 text-xs">
+										Click on an image to set it as the main image. Hover over an
+										image to see the delete button.
+									</p>
+								)}
+								{availableImages.length === 1 && (
+									<p className="mt-3 text-gray-500 text-xs">
+										You need at least one image for your listing.
+									</p>
+								)}
 							</div>
 						)}
 
@@ -326,10 +404,7 @@ function EditListingRoute() {
 										params: { listingId },
 									})
 								}
-								disabled={
-									updateListingMutation.isPending ||
-									updateMainImageMutation.isPending
-								}
+								disabled={updateListingMutation.isPending}
 							>
 								Cancel
 							</Button>
@@ -339,15 +414,9 @@ function EditListingRoute() {
 								{([canSubmit, isSubmitting]) => (
 									<Button
 										type="submit"
-										disabled={
-											!canSubmit ||
-											updateListingMutation.isPending ||
-											updateMainImageMutation.isPending
-										}
+										disabled={!canSubmit || updateListingMutation.isPending}
 									>
-										{updateListingMutation.isPending ||
-										updateMainImageMutation.isPending ||
-										isSubmitting ? (
+										{updateListingMutation.isPending || isSubmitting ? (
 											<Loader2 className="h-4 w-4 animate-spin" />
 										) : (
 											"Update Listing"

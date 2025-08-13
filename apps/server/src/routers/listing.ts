@@ -3,7 +3,7 @@ import z from "zod";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
-import { compressAndUploadImage, getListingImages, changeMainImage } from "../lib/spaces";
+import { compressAndUploadImage, getListingImages, changeMainImage, deleteImage } from "../lib/spaces";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const listingRouter = router({
@@ -113,6 +113,8 @@ export const listingRouter = router({
 				description: z.string().min(1),
 				location: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
+				imagesToDelete: z.array(z.string().url()).optional(),
+				newMainImageUrl: z.string().url().optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -131,6 +133,32 @@ export const listingRouter = router({
 				throw new Error("Unauthorized: You can only edit your own listings");
 			}
 
+			// Get current images to validate operations
+			const currentImages = await getListingImages(input.id);
+			
+			// Process image deletions
+			if (input.imagesToDelete && input.imagesToDelete.length > 0) {
+				// Ensure we're not deleting all images
+				const remainingImages = currentImages.filter(
+					(imageUrl) => !input.imagesToDelete!.includes(imageUrl)
+				);
+				
+				if (remainingImages.length === 0) {
+					throw new Error("Cannot delete all images from a listing");
+				}
+
+				// Delete images from S3
+				for (const imageUrl of input.imagesToDelete) {
+					await deleteImage(imageUrl);
+				}
+			}
+
+			// Update main image if specified and it's not being deleted
+			if (input.newMainImageUrl && (!input.imagesToDelete || !input.imagesToDelete.includes(input.newMainImageUrl))) {
+				await changeMainImage(input.id, input.newMainImageUrl);
+			}
+
+			// Update listing details
 			return db.update(listing)
 				.set({
 					title: input.title,
@@ -205,6 +233,42 @@ export const listingRouter = router({
 
 			// Change the main image in S3
 			await changeMainImage(input.listingId, input.newMainImageUrl);
+
+			return { success: true };
+		}),
+
+	deleteImage: protectedProcedure
+		.input(
+			z.object({
+				listingId: z.string(),
+				imageUrl: z.string().url(),
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			// Verify user owns the listing
+			const listingResult = await db
+				.select({ userId: listing.userId })
+				.from(listing)
+				.where(eq(listing.id, input.listingId))
+				.limit(1);
+
+			if (listingResult.length === 0) {
+				throw new Error("Listing not found");
+			}
+
+			if (listingResult[0].userId !== ctx.session.user.id) {
+				throw new Error("Unauthorized: You can only edit your own listings");
+			}
+
+			// Get current images to check if this is the only image
+			const currentImages = await getListingImages(input.listingId);
+			
+			if (currentImages.length <= 1) {
+				throw new Error("Cannot delete the last image from a listing");
+			}
+
+			// Delete the image from S3
+			await deleteImage(input.imageUrl);
 
 			return { success: true };
 		}),

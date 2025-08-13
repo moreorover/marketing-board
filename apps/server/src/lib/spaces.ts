@@ -222,3 +222,28 @@ export async function changeMainImage(listingId: string, newMainImageUrl: string
 		throw new Error("Failed to change main image");
 	}
 }
+
+export async function deleteImage(imageUrl: string): Promise<void> {
+	const bucketName = process.env.DO_SPACES_BUCKET!;
+	
+	try {
+		// Extract the key from the URL
+		// URL format: https://bucket.region.cdn.digitaloceanspaces.com/path/to/file
+		const urlParts = imageUrl.split('/');
+		const keyStartIndex = urlParts.findIndex(part => part.includes('.cdn.digitaloceanspaces.com')) + 1;
+		const key = urlParts.slice(keyStartIndex).join('/');
+
+		if (!key || !key.startsWith('listings/')) {
+			throw new Error("Invalid image URL or path");
+		}
+
+		await spacesClient.send(new DeleteObjectCommand({
+			Bucket: bucketName,
+			Key: key,
+		}));
+		
+	} catch (error) {
+		console.error("Failed to delete image:", error);
+		throw new Error("Failed to delete image");
+	}
+}
