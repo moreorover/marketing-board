@@ -1,35 +1,60 @@
+import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import z from "zod";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
 import { listing } from "../db/schema/listing";
+import { listingImage } from "../db/schema/listing-image";
 import {
-	changeMainImage,
-	compressAndUploadImage,
 	deleteImage,
 	extractKeyFromUrl,
+	generateSignedImageUrl,
 	generateSignedImageUrls,
-	getListingImages,
+	uploadImage,
 } from "../lib/spaces";
 import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
 
 export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
-		const listings = await db.select().from(listing);
+		const listingsWithMainImage = await db.query.listing.findMany({
+			columns: {
+				id: true,
+				title: true,
+				description: true,
+				location: true,
+			},
+			with: {
+				images: {
+					where: eq(listingImage.isMain, true),
+					columns: {
+						objectKey: true,
+					},
+					limit: 1,
+				},
+			},
+		});
 
-		// Get images for each listing from S3 with signed URLs
-		const listingsWithImages = await Promise.all(
-			listings.map(async (listingItem) => {
-				const imageKeys = await getListingImages(listingItem.id);
-				const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
+		// Generate signed URLs for main images
+		const listingsWithSignedUrls = await Promise.all(
+			listingsWithMainImage.map(async (listingItem) => {
+				let mainImageUrl = "";
+				if (listingItem.images[0]?.objectKey) {
+					mainImageUrl = await generateSignedImageUrl(
+						listingItem.images[0].objectKey,
+						3600,
+					);
+				}
 				return {
-					...listingItem,
-					images: imageKeys.map((key) => ({ url: signedUrls[key] || '' })),
+					id: listingItem.id,
+					title: listingItem.title,
+					description: listingItem.description,
+					location: listingItem.location,
+					images: mainImageUrl ? [{ url: mainImageUrl }] : [],
 				};
 			}),
 		);
 
-		return listingsWithImages;
+		return listingsWithSignedUrls;
 	}),
 
 	getAll: protectedProcedure.query(async ({ ctx }) => {
@@ -42,24 +67,32 @@ export const listingRouter = router({
 	getById: publicProcedure
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ input }) => {
-			const listingResult = await db
-				.select()
-				.from(listing)
-				.where(eq(listing.id, input.listingId))
-				.limit(1);
+			const listingResult = await db.query.listing.findFirst({
+				with: {
+					images: {
+						where: eq(listingImage.listingId, input.listingId),
+					},
+				},
+			});
 
-			if (listingResult.length === 0) {
-				return [];
+			if (!listingResult) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Listing not found.",
+					cause: "Incorrect ID.",
+				});
 			}
 
-			const listingItem = listingResult[0];
-			const imageKeys = await getListingImages(listingItem.id);
+			const listingItem = listingResult;
+			const imageKeys = listingResult.images.map((i) => i.objectKey);
 			const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
 
 			return [
 				{
 					...listingItem,
-					images: imageKeys.map((key) => ({ url: signedUrls[key] || '' })),
+					images: imageKeys.map((key: string) => ({
+						url: signedUrls[key] || "",
+					})),
 				},
 			];
 		}),
@@ -100,17 +133,9 @@ export const listingRouter = router({
 
 			// Upload and compress images using the listing ID for folder structure
 			if (input.files && input.files.length > 0) {
-				const mainImageIndex = input.mainImageIndex ?? 0; // Default to first image if not specified
-
-				const uploadPromises = input.files.map(async (file, index) => {
+				const uploadPromises = input.files.map(async (file) => {
 					const buffer = Buffer.from(file.data, "base64");
-					const isMainImage = index === mainImageIndex;
-					return compressAndUploadImage(
-						buffer,
-						file.name,
-						listingId,
-						isMainImage,
-					);
+					return uploadImage(buffer, listingId);
 				});
 
 				await Promise.all(uploadPromises);
@@ -158,55 +183,70 @@ export const listingRouter = router({
 				throw new Error("Unauthorized: You can only edit your own listings");
 			}
 
-			// Get current images to determine what needs to be deleted
-			const currentImages = await getListingImages(input.id);
+			// Get current images from database
+			const currentImages = await db.query.listingImage.findMany({
+				where: eq(listingImage.listingId, input.id),
+			});
 
 			// Convert keepImages URLs to keys if needed
 			const keepImageKeys = (input.keepImages || []).map(extractKeyFromUrl);
 			const imagesToDelete = currentImages.filter(
-				(key) => !keepImageKeys.includes(key),
+				(img) => !keepImageKeys.includes(img.objectKey),
 			);
 
-			// Delete images that are no longer wanted
-			if (imagesToDelete.length > 0) {
-				for (const imageKey of imagesToDelete) {
-					await deleteImage(imageKey);
-				}
+			// Delete images from both S3 and database
+			for (const image of imagesToDelete) {
+				await deleteImage(image.objectKey);
+				await db.delete(listingImage).where(eq(listingImage.id, image.id));
 			}
 
 			// Upload new images if provided
-			let newImageUrls: string[] = [];
+			const newImageKeys: string[] = [];
 			if (input.newFiles && input.newFiles.length > 0) {
-				const uploadPromises = input.newFiles.map(async (file) => {
+				for (const file of input.newFiles) {
 					const buffer = Buffer.from(file.data, "base64");
-					return compressAndUploadImage(buffer, file.name, input.id, false);
-				});
+					const objectKey = await uploadImage(buffer, input.id);
 
-				newImageUrls = await Promise.all(uploadPromises);
+					// Save to database
+					await db.insert(listingImage).values({
+						listingId: input.id,
+						objectKey,
+						isMain: false,
+					});
+
+					newImageKeys.push(objectKey);
+				}
 			}
 
-			// Get remaining images after deletions and new uploads
-			const totalRemainingImages = keepImageKeys.length + newImageUrls.length;
-
-			// Update main image if specified and there will be images remaining
-			if (
-				input.newMainImageUrl &&
-				totalRemainingImages > 0
-			) {
+			// Update main image if specified
+			if (input.newMainImageUrl) {
 				const newMainImageKey = extractKeyFromUrl(input.newMainImageUrl);
+
+				// Clear current main image flag
+				await db
+					.update(listingImage)
+					.set({ isMain: false })
+					.where(eq(listingImage.listingId, input.id));
+
+				// Set new main image
 				if (
 					input.mainImageIsNewFile &&
-					input.mainImageNewFileIndex !== undefined &&
-					newImageUrls.length > input.mainImageNewFileIndex
+					input.mainImageNewFileIndex !== undefined
 				) {
 					// New file selected as main image
-					await changeMainImage(
-						input.id,
-						newImageUrls[input.mainImageNewFileIndex],
-					);
-				} else if (!input.mainImageIsNewFile && !imagesToDelete.includes(newMainImageKey)) {
-					// Existing image key
-					await changeMainImage(input.id, newMainImageKey);
+					const selectedKey = newImageKeys[input.mainImageNewFileIndex];
+					if (selectedKey) {
+						await db
+							.update(listingImage)
+							.set({ isMain: true })
+							.where(eq(listingImage.objectKey, selectedKey));
+					}
+				} else {
+					// Existing image selected as main
+					await db
+						.update(listingImage)
+						.set({ isMain: true })
+						.where(eq(listingImage.objectKey, newMainImageKey));
 				}
 			}
 
