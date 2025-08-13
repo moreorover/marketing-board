@@ -46,11 +46,6 @@ function EditListingRoute() {
 	const [deletedImages, setDeletedImages] = useState<Set<string>>(new Set());
 	const [newFiles, setNewFiles] = useState<File[]>([]);
 	const [newFileUrls, setNewFileUrls] = useState<string[]>([]);
-	const [pendingImageOperations, setPendingImageOperations] = useState<{
-		deleteImages: string[];
-		mainImageUrl: string | null;
-		newFiles: File[];
-	}>({ deleteImages: [], mainImageUrl: null, newFiles: [] });
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
@@ -123,9 +118,9 @@ function EditListingRoute() {
 			try {
 				// Convert new files to base64 data
 				let fileData: { name: string; type: string; data: string }[] = [];
-				if (pendingImageOperations.newFiles.length > 0) {
+				if (newFiles.length > 0) {
 					fileData = await Promise.all(
-						pendingImageOperations.newFiles.map(async (file) => {
+						newFiles.map(async (file) => {
 							return new Promise<{ name: string; type: string; data: string }>(
 								(resolve) => {
 									const reader = new FileReader();
@@ -146,6 +141,11 @@ function EditListingRoute() {
 					);
 				}
 
+				// Calculate which existing images to keep (not deleted)
+				const keepImages = availableImages
+					.filter(img => !deletedImages.has(img.url))
+					.map(img => img.url);
+
 				// Determine main image info
 				let mainImageInfo: {
 					newMainImageUrl?: string;
@@ -153,39 +153,25 @@ function EditListingRoute() {
 					mainImageNewFileIndex?: number;
 				} = {};
 
-				// Only set main image info if we're not deleting all existing images
-				const remainingImages = availableImages.filter(
-					(img) => !pendingImageOperations.deleteImages.includes(img.url),
-				);
-				const willHaveImages =
-					remainingImages.length > 0 ||
-					pendingImageOperations.newFiles.length > 0;
+				const willHaveImages = keepImages.length > 0 || newFiles.length > 0;
 
-				if (
-					pendingImageOperations.mainImageUrl &&
-					willHaveImages &&
-					pendingImageOperations.mainImageUrl !== availableImages[0]?.url
-				) {
+				if (selectedMainImageUrl && willHaveImages && selectedMainImageUrl !== availableImages[0]?.url) {
 					// Check if main image is a new file
-					const isNewFile =
-						pendingImageOperations.mainImageUrl.startsWith("blob:");
+					const isNewFile = selectedMainImageUrl.startsWith("blob:");
 					if (isNewFile) {
 						// Find the index of the selected file
-						const selectedFileIndex = pendingImageOperations.newFiles.findIndex(
-							(file) =>
-								URL.createObjectURL(file) ===
-								pendingImageOperations.mainImageUrl,
+						const selectedFileIndex = newFiles.findIndex(
+							(file, index) => newFileUrls[index] === selectedMainImageUrl
 						);
 						mainImageInfo = {
-							newMainImageUrl: pendingImageOperations.mainImageUrl,
+							newMainImageUrl: selectedMainImageUrl,
 							mainImageIsNewFile: true,
-							mainImageNewFileIndex:
-								selectedFileIndex >= 0 ? selectedFileIndex : 0,
+							mainImageNewFileIndex: selectedFileIndex >= 0 ? selectedFileIndex : 0,
 						};
 					} else {
 						// Existing image
 						mainImageInfo = {
-							newMainImageUrl: pendingImageOperations.mainImageUrl,
+							newMainImageUrl: selectedMainImageUrl,
 							mainImageIsNewFile: false,
 						};
 					}
@@ -195,10 +181,7 @@ function EditListingRoute() {
 				await updateListingMutation.mutateAsync({
 					id: listingId,
 					...value,
-					imagesToDelete:
-						pendingImageOperations.deleteImages.length > 0
-							? pendingImageOperations.deleteImages
-							: undefined,
+					keepImages: keepImages.length > 0 ? keepImages : undefined,
 					newFiles: fileData.length > 0 ? fileData : undefined,
 					...mainImageInfo,
 				});
@@ -218,34 +201,16 @@ function EditListingRoute() {
 		}
 	}, [listing, form]);
 
-	// Initialize pending operations when images first load
+	// Initialize main image when images first load
 	useEffect(() => {
-		if (
-			listing &&
-			images.length > 0 &&
-			pendingImageOperations.mainImageUrl === null &&
-			pendingImageOperations.deleteImages.length === 0
-		) {
-			setPendingImageOperations({
-				deleteImages: [],
-				mainImageUrl: images[0]?.url || null,
-				newFiles: [],
-			});
+		if (listing && images.length > 0 && !selectedMainImageUrl) {
+			setSelectedMainImageUrl(images[0]?.url || "");
 		}
-	}, [listing, images]);
+	}, [listing, images, selectedMainImageUrl]);
 
 	const handleDeleteImage = (imageUrl: string) => {
 		// Add to local deleted images set
 		setDeletedImages((prev) => new Set(prev.add(imageUrl)));
-
-		// Add to pending operations
-		setPendingImageOperations((prev) => {
-			const updated = {
-				...prev,
-				deleteImages: [...prev.deleteImages, imageUrl],
-			};
-			return updated;
-		});
 
 		// If the deleted image was the selected main image, select another or clear
 		if (selectedMainImageUrl === imageUrl) {
@@ -253,26 +218,13 @@ function EditListingRoute() {
 				(img) => img.url !== imageUrl,
 			);
 			if (remainingImages.length > 0) {
-				const newMainImageUrl = remainingImages[0].url;
-				setSelectedMainImageUrl(newMainImageUrl);
-				setPendingImageOperations((prev) => ({
-					...prev,
-					mainImageUrl: newMainImageUrl,
-				}));
+				setSelectedMainImageUrl(remainingImages[0].url);
 			} else if (newFiles.length > 0 && newFileUrls.length > 0) {
 				// If no existing images remain, select first new file
 				setSelectedMainImageUrl(newFileUrls[0]);
-				setPendingImageOperations((prev) => ({
-					...prev,
-					mainImageUrl: newFileUrls[0],
-				}));
 			} else {
 				// No images left, clear main image
 				setSelectedMainImageUrl("");
-				setPendingImageOperations((prev) => ({
-					...prev,
-					mainImageUrl: null,
-				}));
 			}
 		}
 	};
@@ -284,18 +236,9 @@ function EditListingRoute() {
 		const urls = files.map((file) => URL.createObjectURL(file));
 		setNewFileUrls(urls);
 
-		setPendingImageOperations((prev) => ({
-			...prev,
-			newFiles: files,
-		}));
-
 		// If no main image is selected and we have new files, select the first one
 		if (!selectedMainImageUrl && files.length > 0) {
 			setSelectedMainImageUrl(urls[0]);
-			setPendingImageOperations((prev) => ({
-				...prev,
-				mainImageUrl: urls[0],
-			}));
 		}
 	};
 
@@ -464,10 +407,6 @@ function EditListingRoute() {
 												}`}
 												onClick={() => {
 													setSelectedMainImageUrl(image.url);
-													setPendingImageOperations((prev) => ({
-														...prev,
-														mainImageUrl: image.url,
-													}));
 												}}
 											>
 												<img
@@ -505,10 +444,6 @@ function EditListingRoute() {
 														size="sm"
 														onClick={() => {
 															setSelectedMainImageUrl(image.url);
-															setPendingImageOperations((prev) => ({
-																...prev,
-																mainImageUrl: image.url,
-															}));
 														}}
 														type="button"
 													>
@@ -547,10 +482,6 @@ function EditListingRoute() {
 													}`}
 													onClick={() => {
 														setSelectedMainImageUrl(fileUrl);
-														setPendingImageOperations((prev) => ({
-															...prev,
-															mainImageUrl: fileUrl,
-														}));
 													}}
 												>
 													<img
@@ -582,10 +513,6 @@ function EditListingRoute() {
 																size="sm"
 																onClick={() => {
 																	setSelectedMainImageUrl(fileUrl);
-																	setPendingImageOperations((prev) => ({
-																		...prev,
-																		mainImageUrl: fileUrl,
-																	}));
 																}}
 																type="button"
 															>
@@ -620,27 +547,13 @@ function EditListingRoute() {
 
 															setNewFiles(updatedFiles);
 															setNewFileUrls(updatedUrls);
-															setPendingImageOperations((prev) => ({
-																...prev,
-																newFiles: updatedFiles,
-															}));
 
 															// If deleted file was main image, select another
 															if (selectedMainImageUrl === fileUrl) {
 																if (availableImages.length > 0) {
-																	setSelectedMainImageUrl(
-																		availableImages[0].url,
-																	);
-																	setPendingImageOperations((prev) => ({
-																		...prev,
-																		mainImageUrl: availableImages[0].url,
-																	}));
+																	setSelectedMainImageUrl(availableImages[0].url);
 																} else if (updatedUrls.length > 0) {
 																	setSelectedMainImageUrl(updatedUrls[0]);
-																	setPendingImageOperations((prev) => ({
-																		...prev,
-																		mainImageUrl: updatedUrls[0],
-																	}));
 																}
 															}
 														}}

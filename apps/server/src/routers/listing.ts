@@ -123,7 +123,7 @@ export const listingRouter = router({
 				description: z.string().min(1),
 				location: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
-				imagesToDelete: z.array(z.string().url()).optional(),
+				keepImages: z.array(z.string().url()).optional(),
 				newMainImageUrl: z.string().optional(),
 				mainImageIsNewFile: z.boolean().optional(),
 				mainImageNewFileIndex: z.number().int().min(0).optional(),
@@ -154,13 +154,18 @@ export const listingRouter = router({
 				throw new Error("Unauthorized: You can only edit your own listings");
 			}
 
-			// Get current images to validate operations
+			// Get current images to determine what needs to be deleted
 			const currentImages = await getListingImages(input.id);
 
-			// Process image deletions
-			if (input.imagesToDelete && input.imagesToDelete.length > 0) {
-				// Delete images from S3
-				for (const imageUrl of input.imagesToDelete) {
+			// Determine which images to delete by comparing current vs keepImages
+			const keepImages = input.keepImages || [];
+			const imagesToDelete = currentImages.filter(
+				(url) => !keepImages.includes(url),
+			);
+
+			// Delete images that are no longer wanted
+			if (imagesToDelete.length > 0) {
+				for (const imageUrl of imagesToDelete) {
 					await deleteImage(imageUrl);
 				}
 			}
@@ -177,18 +182,13 @@ export const listingRouter = router({
 			}
 
 			// Get remaining images after deletions and new uploads
-			const remainingExistingImages = input.imagesToDelete
-				? currentImages.filter((url) => !input.imagesToDelete!.includes(url))
-				: currentImages;
-			const totalRemainingImages =
-				remainingExistingImages.length + newImageUrls.length;
+			const totalRemainingImages = keepImages.length + newImageUrls.length;
 
 			// Update main image if specified and there will be images remaining
 			if (
 				input.newMainImageUrl &&
 				totalRemainingImages > 0 &&
-				(!input.imagesToDelete ||
-					!input.imagesToDelete.includes(input.newMainImageUrl))
+				!imagesToDelete.includes(input.newMainImageUrl)
 			) {
 				if (
 					input.mainImageIsNewFile &&
