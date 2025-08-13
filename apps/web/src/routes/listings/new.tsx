@@ -1,11 +1,7 @@
-import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
-import z from "zod";
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -13,45 +9,13 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Dropzone,
-	DropzoneContent,
-	DropzoneEmptyState,
-} from "@/components/ui/shadcn-io/dropzone";
-import { Textarea } from "@/components/ui/textarea";
+import { ListingForm, type ListingFormData } from "@/components/ListingForm";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/listings/new")({
 	component: NewListingRoute,
 });
-
-const FormSchema = z.object({
-	title: z.string().min(1),
-	description: z.string().min(1),
-	location: z.string().min(1),
-	phone: z.string().startsWith("+44").min(13).max(13),
-	files: z
-		.array(
-			z.object({
-				name: z.string(),
-				type: z.string(),
-				data: z.string(),
-			}),
-		)
-		.optional(),
-});
-
-type FormData = z.infer<typeof FormSchema>;
-
-const defaultValues: FormData = {
-	title: "",
-	description: "",
-	location: "",
-	phone: "",
-};
 
 function NewListingRoute() {
 	const { data: session, isPending } = authClient.useSession();
@@ -65,15 +29,6 @@ function NewListingRoute() {
 		}
 	}, [session, isPending]);
 
-	const [files, setFiles] = useState<File[] | undefined>();
-	const [mainImageIndex, setMainImageIndex] = useState<number>(0);
-
-	const handleDrop = (files: File[]) => {
-		setFiles(files);
-		// Reset main image index if files change
-		setMainImageIndex(0);
-	};
-
 	const createMutation = useMutation(
 		trpc.listing.create.mutationOptions({
 			onSuccess: () => {
@@ -86,229 +41,41 @@ function NewListingRoute() {
 		}),
 	);
 
-	const form = useForm({
-		defaultValues,
-		validators: { onChange: FormSchema },
-		onSubmit: async ({ formApi, value }) => {
-			let fileData: { name: string; type: string; data: string }[] = [];
+	const handleSubmit = async ({
+		formData,
+		newFiles,
+		mainImageNewFileIndex,
+	}: {
+		formData: ListingFormData;
+		newFiles: { name: string; type: string; data: string }[];
+		mainImageNewFileIndex?: number;
+	}) => {
+		await createMutation.mutateAsync({
+			...formData,
+			files: newFiles.length > 0 ? newFiles : undefined,
+			mainImageIndex: newFiles.length > 0 ? (mainImageNewFileIndex ?? 0) : undefined,
+		});
+	};
 
-			if (files && files.length > 0) {
-				fileData = await Promise.all(
-					files.map(async (file) => {
-						return new Promise<{ name: string; type: string; data: string }>(
-							(resolve) => {
-								const reader = new FileReader();
-								reader.onloadend = () => {
-									const base64String = (reader.result as string).split(",")[1];
-									resolve({
-										name: file.name,
-										type: file.type,
-										data: base64String,
-									});
-								};
-								reader.readAsDataURL(file);
-							},
-						);
-					}),
-				);
-			}
-
-			createMutation.mutate({
-				...value,
-				files: fileData.length > 0 ? fileData : undefined,
-				mainImageIndex: fileData.length > 0 ? mainImageIndex : undefined,
-			});
-
-			formApi.reset();
-		},
-	});
+	const handleCancel = () => {
+		navigate({ to: "/listings" });
+	};
 
 	return (
-		<div className="mx-auto w-full max-w-md py-10">
+		<div className="mx-auto w-full max-w-4xl py-10">
 			<Card>
 				<CardHeader>
 					<CardTitle>Create New Listing</CardTitle>
 					<CardDescription>Add a new listing to the board</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							form.handleSubmit();
-						}}
-						className="space-y-4"
-					>
-						<form.Field name="title">
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name}>Title</Label>
-									<Input
-										id={name}
-										name={name}
-										value={state.value}
-										onBlur={handleBlur}
-										onChange={(e) => handleChange(e.target.value)}
-										placeholder="Enter listing title..."
-										disabled={createMutation.isPending}
-									/>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
-								</div>
-							)}
-						</form.Field>
-
-						<form.Field name="description">
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name}>Description</Label>
-									<Textarea
-										id={name}
-										name={name}
-										value={state.value}
-										onBlur={handleBlur}
-										onChange={(e) => handleChange(e.target.value)}
-										placeholder="Enter listing description..."
-										disabled={createMutation.isPending}
-									/>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
-								</div>
-							)}
-						</form.Field>
-
-						<div>
-							<Label>Images</Label>
-							<Dropzone
-								maxFiles={3}
-								onDrop={handleDrop}
-								onError={console.error}
-								src={files}
-							>
-								<DropzoneEmptyState />
-								<DropzoneContent />
-							</Dropzone>
-
-							{/* Image Preview and Main Selection */}
-							{files && files.length > 0 && (
-								<div className="mt-4">
-									<Label className="font-medium text-sm">
-										Select Main Image (will appear first in listings)
-									</Label>
-									<div className="mt-2 grid grid-cols-3 gap-3">
-										{files.map((file, index) => (
-											<div key={file.name} className="relative">
-												<div
-													className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
-														index === mainImageIndex
-															? "border-blue-500 bg-blue-50"
-															: "border-gray-200 hover:border-gray-300"
-													}`}
-													onClick={() => setMainImageIndex(index)}
-												>
-													<img
-														src={URL.createObjectURL(file)}
-														alt={`Preview ${index + 1}`}
-														className="h-20 w-full rounded object-cover"
-													/>
-													<div className="mt-1 text-center">
-														<span className="block truncate text-gray-600 text-xs">
-															{file.name}
-														</span>
-													</div>
-												</div>
-												{index === mainImageIndex && (
-													<div className="-top-2 -right-2 absolute flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 font-bold text-white text-xs">
-														★
-													</div>
-												)}
-											</div>
-										))}
-									</div>
-									<p className="mt-2 text-gray-500 text-xs">
-										Click on an image to set it as the main image
-									</p>
-								</div>
-							)}
-						</div>
-
-						<form.Field name="location">
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name}>Location</Label>
-									<Input
-										id={name}
-										name={name}
-										value={state.value}
-										onBlur={handleBlur}
-										onChange={(e) => handleChange(e.target.value)}
-										placeholder="Enter location..."
-										disabled={createMutation.isPending}
-									/>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
-								</div>
-							)}
-						</form.Field>
-
-						<form.Field name="phone">
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name}>Phone</Label>
-									<Input
-										id={name}
-										name={name}
-										value={state.value}
-										onBlur={handleBlur}
-										onChange={(e) => handleChange(e.target.value)}
-										placeholder="+44"
-										disabled={createMutation.isPending}
-									/>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
-								</div>
-							)}
-						</form.Field>
-
-						<div className="flex space-x-2">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => navigate({ to: "/listings" })}
-								disabled={createMutation.isPending}
-							>
-								Cancel
-							</Button>
-							<form.Subscribe
-								selector={(state) => [state.canSubmit, state.isSubmitting]}
-							>
-								{([canSubmit, isSubmitting]) => (
-									<Button
-										type="submit"
-										disabled={!canSubmit || createMutation.isPending}
-									>
-										{createMutation.isPending || isSubmitting ? (
-											<Loader2 className="h-4 w-4 animate-spin" />
-										) : (
-											"Create Listing"
-										)}
-									</Button>
-								)}
-							</form.Subscribe>
-						</div>
-					</form>
+					<ListingForm
+						onSubmit={handleSubmit}
+						onCancel={handleCancel}
+						submitButtonText="Create Listing"
+						isSubmitting={createMutation.isPending}
+						mode="create"
+					/>
 				</CardContent>
 			</Card>
 		</div>

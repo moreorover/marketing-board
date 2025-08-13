@@ -1,11 +1,9 @@
-import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Star, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
-import z from "zod";
-import { Button } from "@/components/ui/button";
+import { ListingForm, type ListingFormData } from "@/components/ListingForm";
 import {
 	Card,
 	CardContent,
@@ -13,14 +11,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Dropzone,
-	DropzoneContent,
-	DropzoneEmptyState,
-} from "@/components/ui/shadcn-io/dropzone";
-import { Textarea } from "@/components/ui/textarea";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
@@ -28,24 +18,10 @@ export const Route = createFileRoute("/listings/$listingId/edit")({
 	component: EditListingRoute,
 });
 
-const FormSchema = z.object({
-	title: z.string().min(1),
-	description: z.string().min(1),
-	location: z.string().min(1),
-	phone: z.string().startsWith("+44").min(13).max(13),
-});
-
-type FormData = z.infer<typeof FormSchema>;
-
 function EditListingRoute() {
 	const { listingId } = Route.useParams();
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const navigate = Route.useNavigate();
-
-	const [selectedMainImageUrl, setSelectedMainImageUrl] = useState<string>("");
-	const [deletedImages, setDeletedImages] = useState<Set<string>>(new Set());
-	const [newFiles, setNewFiles] = useState<File[]>([]);
-	const [newFileUrls, setNewFileUrls] = useState<string[]>([]);
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
@@ -54,8 +30,6 @@ function EditListingRoute() {
 
 	// Check if current user owns this listing
 	const isOwner = listing?.userId === session?.user.id;
-
-	const images = listing?.images || [];
 
 	useEffect(() => {
 		if (!session && !sessionPending) {
@@ -66,33 +40,12 @@ function EditListingRoute() {
 	}, [session, sessionPending]);
 
 	useEffect(() => {
-		if (!isOwner) {
+		if (!isOwner && listing) {
 			navigate({
 				to: "/",
 			});
 		}
-	}, [isOwner]);
-
-	// Filter out deleted images
-	const availableImages = images.filter((img) => !deletedImages.has(img.url));
-
-	// Set initial main image (first image is main)
-	useEffect(() => {
-		if (availableImages.length > 0 && !selectedMainImageUrl) {
-			setSelectedMainImageUrl(availableImages[0].url);
-		}
-	}, [availableImages, selectedMainImageUrl]);
-
-	// Reset selectedMainImageUrl if the selected image was deleted
-	useEffect(() => {
-		if (
-			selectedMainImageUrl &&
-			deletedImages.has(selectedMainImageUrl) &&
-			availableImages.length > 0
-		) {
-			setSelectedMainImageUrl(availableImages[0].url);
-		}
-	}, [selectedMainImageUrl, deletedImages, availableImages]);
+	}, [isOwner, listing]);
 
 	const updateListingMutation = useMutation(
 		trpc.listing.update.mutationOptions({
@@ -106,145 +59,37 @@ function EditListingRoute() {
 		}),
 	);
 
-	const form = useForm({
-		defaultValues: {
-			title: "",
-			description: "",
-			location: "",
-			phone: "",
-		} as FormData,
-		validators: { onChange: FormSchema },
-		onSubmit: async ({ value }) => {
-			try {
-				// Convert new files to base64 data
-				let fileData: { name: string; type: string; data: string }[] = [];
-				if (newFiles.length > 0) {
-					fileData = await Promise.all(
-						newFiles.map(async (file) => {
-							return new Promise<{ name: string; type: string; data: string }>(
-								(resolve) => {
-									const reader = new FileReader();
-									reader.onloadend = () => {
-										const base64String = (reader.result as string).split(
-											",",
-										)[1];
-										resolve({
-											name: file.name,
-											type: file.type,
-											data: base64String,
-										});
-									};
-									reader.readAsDataURL(file);
-								},
-							);
-						}),
-					);
-				}
-
-				// Calculate which existing images to keep (not deleted)
-				const keepImages = availableImages
-					.filter((img) => !deletedImages.has(img.url))
-					.map((img) => img.url);
-
-				// Determine main image info
-				let mainImageInfo: {
-					newMainImageUrl?: string;
-					mainImageIsNewFile?: boolean;
-					mainImageNewFileIndex?: number;
-				} = {};
-
-				const willHaveImages = keepImages.length > 0 || newFiles.length > 0;
-
-				if (
-					selectedMainImageUrl &&
-					willHaveImages &&
-					selectedMainImageUrl !== availableImages[0]?.url
-				) {
-					// Check if main image is a new file
-					const isNewFile = selectedMainImageUrl.startsWith("blob:");
-					if (isNewFile) {
-						// Find the index of the selected file
-						const selectedFileIndex = newFiles.findIndex(
-							(file, index) => newFileUrls[index] === selectedMainImageUrl,
-						);
-						mainImageInfo = {
-							newMainImageUrl: selectedMainImageUrl,
-							mainImageIsNewFile: true,
-							mainImageNewFileIndex:
-								selectedFileIndex >= 0 ? selectedFileIndex : 0,
-						};
-					} else {
-						// Existing image
-						mainImageInfo = {
-							newMainImageUrl: selectedMainImageUrl,
-							mainImageIsNewFile: false,
-						};
-					}
-				}
-
-				// Update listing with all operations in a single call
-				await updateListingMutation.mutateAsync({
-					id: listingId,
-					...value,
-					keepImages: keepImages.length > 0 ? keepImages : undefined,
-					newFiles: fileData.length > 0 ? fileData : undefined,
-					...mainImageInfo,
-				});
-			} catch (error) {
-				// Error handling is done in mutation options
-			}
-		},
-	});
-
-	// Update form default values when listing loads
-	useEffect(() => {
-		if (listing) {
-			form.setFieldValue("title", listing.title);
-			form.setFieldValue("description", listing.description);
-			form.setFieldValue("location", listing.location);
-			form.setFieldValue("phone", listing.phone);
-		}
-	}, [listing, form]);
-
-	// Initialize main image when images first load
-	useEffect(() => {
-		if (listing && images.length > 0 && !selectedMainImageUrl) {
-			setSelectedMainImageUrl(images[0]?.url || "");
-		}
-	}, [listing, images, selectedMainImageUrl]);
-
-	const handleDeleteImage = (imageUrl: string) => {
-		// Add to local deleted images set
-		setDeletedImages((prev) => new Set(prev.add(imageUrl)));
-
-		// If the deleted image was the selected main image, select another or clear
-		if (selectedMainImageUrl === imageUrl) {
-			const remainingImages = availableImages.filter(
-				(img) => img.url !== imageUrl,
-			);
-			if (remainingImages.length > 0) {
-				setSelectedMainImageUrl(remainingImages[0].url);
-			} else if (newFiles.length > 0 && newFileUrls.length > 0) {
-				// If no existing images remain, select first new file
-				setSelectedMainImageUrl(newFileUrls[0]);
-			} else {
-				// No images left, clear main image
-				setSelectedMainImageUrl("");
-			}
-		}
+	const handleSubmit = async ({
+		formData,
+		newFiles,
+		keepImages,
+		selectedMainImageUrl,
+		mainImageIsNewFile,
+		mainImageNewFileIndex,
+	}: {
+		formData: ListingFormData;
+		newFiles: { name: string; type: string; data: string }[];
+		keepImages?: string[];
+		selectedMainImageUrl?: string;
+		mainImageIsNewFile?: boolean;
+		mainImageNewFileIndex?: number;
+	}) => {
+		await updateListingMutation.mutateAsync({
+			id: listingId,
+			...formData,
+			keepImages,
+			newFiles: newFiles.length > 0 ? newFiles : undefined,
+			newMainImageUrl: selectedMainImageUrl,
+			mainImageIsNewFile,
+			mainImageNewFileIndex,
+		});
 	};
 
-	const handleFilesUpload = (files: File[]) => {
-		setNewFiles(files);
-
-		// Create stable URLs for the files
-		const urls = files.map((file) => URL.createObjectURL(file));
-		setNewFileUrls(urls);
-
-		// If no main image is selected and we have new files, select the first one
-		if (!selectedMainImageUrl && files.length > 0) {
-			setSelectedMainImageUrl(urls[0]);
-		}
+	const handleCancel = () => {
+		navigate({
+			to: "/listings/$listingId",
+			params: { listingId },
+		});
 	};
 
 	if (sessionPending || listingQuery.isLoading) {
@@ -277,350 +122,20 @@ function EditListingRoute() {
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<form
-						onSubmit={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							form.handleSubmit();
+					<ListingForm
+						initialData={{
+							title: listing.title,
+							description: listing.description,
+							location: listing.location,
+							phone: listing.phone,
 						}}
-						className="space-y-6"
-					>
-						{/* Listing Details Form Fields */}
-						<div className="grid gap-4 md:grid-cols-2">
-							<form.Field name="title">
-								{({ name, state, handleChange, handleBlur }) => (
-									<div>
-										<Label htmlFor={name}>Title</Label>
-										<Input
-											id={name}
-											name={name}
-											value={state.value}
-											onBlur={handleBlur}
-											onChange={(e) => handleChange(e.target.value)}
-											placeholder="Enter listing title..."
-											disabled={updateListingMutation.isPending}
-										/>
-										{state.meta.errors.length > 0 && state.meta.isTouched && (
-											<div className="mt-1 text-red-500 text-sm">
-												{state.meta.errors[0]?.message}
-											</div>
-										)}
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="location">
-								{({ name, state, handleChange, handleBlur }) => (
-									<div>
-										<Label htmlFor={name}>Location</Label>
-										<Input
-											id={name}
-											name={name}
-											value={state.value}
-											onBlur={handleBlur}
-											onChange={(e) => handleChange(e.target.value)}
-											placeholder="Enter location..."
-											disabled={updateListingMutation.isPending}
-										/>
-										{state.meta.errors.length > 0 && state.meta.isTouched && (
-											<div className="mt-1 text-red-500 text-sm">
-												{state.meta.errors[0]?.message}
-											</div>
-										)}
-									</div>
-								)}
-							</form.Field>
-						</div>
-
-						<form.Field name="description">
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name}>Description</Label>
-									<Textarea
-										id={name}
-										name={name}
-										value={state.value}
-										onBlur={handleBlur}
-										onChange={(e) => handleChange(e.target.value)}
-										placeholder="Enter listing description..."
-										disabled={updateListingMutation.isPending}
-										rows={4}
-									/>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
-								</div>
-							)}
-						</form.Field>
-
-						<form.Field name="phone">
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name}>Phone</Label>
-									<Input
-										id={name}
-										name={name}
-										value={state.value}
-										onBlur={handleBlur}
-										onChange={(e) => handleChange(e.target.value)}
-										placeholder="+44"
-										disabled={updateListingMutation.isPending}
-									/>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
-								</div>
-							)}
-						</form.Field>
-
-						{/* Image Upload */}
-						<div>
-							<Label>Add More Images</Label>
-							<Dropzone
-								maxFiles={5}
-								onDrop={handleFilesUpload}
-								onError={console.error}
-								src={newFiles}
-							>
-								<DropzoneEmptyState />
-								<DropzoneContent />
-							</Dropzone>
-						</div>
-
-						{/* Main Image Selection */}
-						{availableImages.length > 0 || newFiles.length > 0 ? (
-							<div>
-								<Label className="font-medium text-sm">
-									Select Main Image & Manage Images
-								</Label>
-								<div className="mt-3 space-y-3">
-									{/* Existing Images */}
-									{availableImages.map((image, index) => (
-										<div
-											key={image.url}
-											className="flex items-center gap-3 rounded-lg border p-3"
-										>
-											<div
-												className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
-													selectedMainImageUrl === image.url
-														? "border-blue-500 bg-blue-50"
-														: "border-gray-200 hover:border-gray-300"
-												}`}
-												onClick={() => {
-													setSelectedMainImageUrl(image.url);
-												}}
-											>
-												<img
-													src={image.url}
-													alt={`Listing img ${index + 1}`}
-													className="h-20 w-20 rounded object-cover"
-												/>
-											</div>
-
-											<div className="flex-1">
-												<div className="flex items-center gap-2">
-													<span className="font-medium text-sm">
-														Image {index + 1}
-													</span>
-													{selectedMainImageUrl === image.url && (
-														<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
-															<Star className="h-3 w-3 fill-current" />
-															Main
-														</div>
-													)}
-													{index === 0 &&
-														!newFiles.length &&
-														selectedMainImageUrl !== image.url && (
-															<span className="font-medium text-blue-600 text-xs">
-																(Current Main)
-															</span>
-														)}
-												</div>
-											</div>
-
-											<div className="flex gap-2">
-												{selectedMainImageUrl !== image.url && (
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() => {
-															setSelectedMainImageUrl(image.url);
-														}}
-														type="button"
-													>
-														<Star className="mr-1 h-4 w-4" />
-														Set as Main
-													</Button>
-												)}
-
-												<Button
-													variant="destructive"
-													size="sm"
-													onClick={() => handleDeleteImage(image.url)}
-													type="button"
-												>
-													<Trash2 className="mr-1 h-4 w-4" />
-													Delete
-												</Button>
-											</div>
-										</div>
-									))}
-
-									{/* New Files */}
-									{newFiles.map((file, index) => {
-										const fileUrl = newFileUrls[index];
-										if (!fileUrl) return null;
-										return (
-											<div
-												key={file.name}
-												className="flex items-center gap-3 rounded-lg border p-3"
-											>
-												<div
-													className={`cursor-pointer rounded-lg border-2 p-2 transition-colors ${
-														selectedMainImageUrl === fileUrl
-															? "border-blue-500 bg-blue-50"
-															: "border-gray-200 hover:border-gray-300"
-													}`}
-													onClick={() => {
-														setSelectedMainImageUrl(fileUrl);
-													}}
-												>
-													<img
-														src={fileUrl}
-														alt={`New img ${index + 1}`}
-														className="h-20 w-20 rounded object-cover"
-													/>
-												</div>
-
-												<div className="flex-1">
-													<div className="flex items-center gap-2">
-														<span className="font-medium text-sm">
-															{file.name}
-														</span>
-														{selectedMainImageUrl === fileUrl && (
-															<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
-																<Star className="h-3 w-3 fill-current" />
-																Main
-															</div>
-														)}
-													</div>
-												</div>
-
-												<div className="flex gap-2">
-													{selectedMainImageUrl !== fileUrl && (
-														<>
-															<Button
-																variant="outline"
-																size="sm"
-																onClick={() => {
-																	setSelectedMainImageUrl(fileUrl);
-																}}
-																type="button"
-															>
-																<Star className="mr-1 h-4 w-4" />
-																Set as Main
-															</Button>
-															<span className="flex items-center rounded bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
-																New
-															</span>
-														</>
-													)}
-
-													{selectedMainImageUrl === fileUrl && (
-														<span className="flex items-center rounded bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
-															New
-														</span>
-													)}
-
-													<Button
-														variant="destructive"
-														size="sm"
-														onClick={() => {
-															const updatedFiles = newFiles.filter(
-																(_, i) => i !== index,
-															);
-															const updatedUrls = newFileUrls.filter(
-																(_, i) => i !== index,
-															);
-
-															// Revoke the deleted URL to prevent memory leaks
-															URL.revokeObjectURL(fileUrl);
-
-															setNewFiles(updatedFiles);
-															setNewFileUrls(updatedUrls);
-
-															// If deleted file was main image, select another
-															if (selectedMainImageUrl === fileUrl) {
-																if (availableImages.length > 0) {
-																	setSelectedMainImageUrl(
-																		availableImages[0].url,
-																	);
-																} else if (updatedUrls.length > 0) {
-																	setSelectedMainImageUrl(updatedUrls[0]);
-																}
-															}
-														}}
-														type="button"
-													>
-														<Trash2 className="mr-1 h-4 w-4" />
-														Delete
-													</Button>
-												</div>
-											</div>
-										);
-									})}
-								</div>
-								<p className="mt-3 text-gray-500 text-xs">
-									Click on an image or use the "Set as Main" button to select
-									the main image. Use the "Delete" button to remove images.
-								</p>
-							</div>
-						) : (
-							<div className="rounded-lg border border-gray-300 border-dashed bg-gray-50 p-6 text-center">
-								<p className="text-gray-500 text-sm">
-									This listing currently has no images. You can add images using
-									the upload area above.
-								</p>
-							</div>
-						)}
-
-						{/* Form Actions */}
-						<div className="flex space-x-3">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() =>
-									navigate({
-										to: "/listings/$listingId",
-										params: { listingId },
-									})
-								}
-								disabled={updateListingMutation.isPending}
-							>
-								Cancel
-							</Button>
-							<form.Subscribe
-								selector={(state) => [state.canSubmit, state.isSubmitting]}
-							>
-								{([canSubmit, isSubmitting]) => (
-									<Button
-										type="submit"
-										disabled={!canSubmit || updateListingMutation.isPending}
-									>
-										{updateListingMutation.isPending || isSubmitting ? (
-											<Loader2 className="h-4 w-4 animate-spin" />
-										) : (
-											"Update Listing"
-										)}
-									</Button>
-								)}
-							</form.Subscribe>
-						</div>
-					</form>
+						initialImages={listing.images || []}
+						onSubmit={handleSubmit}
+						onCancel={handleCancel}
+						submitButtonText="Update Listing"
+						isSubmitting={updateListingMutation.isPending}
+						mode="edit"
+					/>
 				</CardContent>
 			</Card>
 		</div>
