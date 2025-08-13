@@ -153,8 +153,17 @@ function EditListingRoute() {
 					mainImageNewFileIndex?: number;
 				} = {};
 
+				// Only set main image info if we're not deleting all existing images
+				const remainingImages = availableImages.filter(
+					(img) => !pendingImageOperations.deleteImages.includes(img.url),
+				);
+				const willHaveImages =
+					remainingImages.length > 0 ||
+					pendingImageOperations.newFiles.length > 0;
+
 				if (
 					pendingImageOperations.mainImageUrl &&
+					willHaveImages &&
 					pendingImageOperations.mainImageUrl !== availableImages[0]?.url
 				) {
 					// Check if main image is a new file
@@ -214,7 +223,8 @@ function EditListingRoute() {
 		if (
 			listing &&
 			images.length > 0 &&
-			pendingImageOperations.mainImageUrl === null
+			pendingImageOperations.mainImageUrl === null &&
+			pendingImageOperations.deleteImages.length === 0
 		) {
 			setPendingImageOperations({
 				deleteImages: [],
@@ -222,25 +232,22 @@ function EditListingRoute() {
 				newFiles: [],
 			});
 		}
-	}, [listing, images, pendingImageOperations.mainImageUrl]);
+	}, [listing, images]);
 
 	const handleDeleteImage = (imageUrl: string) => {
-		const totalImages = availableImages.length + newFiles.length;
-		if (totalImages <= 1) {
-			toast.error("Cannot delete the last image from a listing");
-			return;
-		}
-
 		// Add to local deleted images set
 		setDeletedImages((prev) => new Set(prev.add(imageUrl)));
 
 		// Add to pending operations
-		setPendingImageOperations((prev) => ({
-			...prev,
-			deleteImages: [...prev.deleteImages, imageUrl],
-		}));
+		setPendingImageOperations((prev) => {
+			const updated = {
+				...prev,
+				deleteImages: [...prev.deleteImages, imageUrl],
+			};
+			return updated;
+		});
 
-		// If the deleted image was the selected main image, select the first available image
+		// If the deleted image was the selected main image, select another or clear
 		if (selectedMainImageUrl === imageUrl) {
 			const remainingImages = availableImages.filter(
 				(img) => img.url !== imageUrl,
@@ -258,6 +265,13 @@ function EditListingRoute() {
 				setPendingImageOperations((prev) => ({
 					...prev,
 					mainImageUrl: newFileUrls[0],
+				}));
+			} else {
+				// No images left, clear main image
+				setSelectedMainImageUrl("");
+				setPendingImageOperations((prev) => ({
+					...prev,
+					mainImageUrl: null,
 				}));
 			}
 		}
@@ -430,7 +444,7 @@ function EditListingRoute() {
 						</div>
 
 						{/* Main Image Selection */}
-						{(availableImages.length > 0 || newFiles.length > 0) && (
+						{availableImages.length > 0 || newFiles.length > 0 ? (
 							<div>
 								<Label className="font-medium text-sm">
 									Select Main Image & Manage Images
@@ -503,17 +517,15 @@ function EditListingRoute() {
 													</Button>
 												)}
 
-												{availableImages.length + newFiles.length > 1 && (
-													<Button
-														variant="destructive"
-														size="sm"
-														onClick={() => handleDeleteImage(image.url)}
-														type="button"
-													>
-														<Trash2 className="mr-1 h-4 w-4" />
-														Delete
-													</Button>
-												)}
+												<Button
+													variant="destructive"
+													size="sm"
+													onClick={() => handleDeleteImage(image.url)}
+													type="button"
+												>
+													<Trash2 className="mr-1 h-4 w-4" />
+													Delete
+												</Button>
 											</div>
 										</div>
 									))}
@@ -592,53 +604,51 @@ function EditListingRoute() {
 														</span>
 													)}
 
-													{availableImages.length + newFiles.length > 1 && (
-														<Button
-															variant="destructive"
-															size="sm"
-															onClick={() => {
-																const updatedFiles = newFiles.filter(
-																	(_, i) => i !== index,
-																);
-																const updatedUrls = newFileUrls.filter(
-																	(_, i) => i !== index,
-																);
+													<Button
+														variant="destructive"
+														size="sm"
+														onClick={() => {
+															const updatedFiles = newFiles.filter(
+																(_, i) => i !== index,
+															);
+															const updatedUrls = newFileUrls.filter(
+																(_, i) => i !== index,
+															);
 
-																// Revoke the deleted URL to prevent memory leaks
-																URL.revokeObjectURL(fileUrl);
+															// Revoke the deleted URL to prevent memory leaks
+															URL.revokeObjectURL(fileUrl);
 
-																setNewFiles(updatedFiles);
-																setNewFileUrls(updatedUrls);
-																setPendingImageOperations((prev) => ({
-																	...prev,
-																	newFiles: updatedFiles,
-																}));
+															setNewFiles(updatedFiles);
+															setNewFileUrls(updatedUrls);
+															setPendingImageOperations((prev) => ({
+																...prev,
+																newFiles: updatedFiles,
+															}));
 
-																// If deleted file was main image, select another
-																if (selectedMainImageUrl === fileUrl) {
-																	if (availableImages.length > 0) {
-																		setSelectedMainImageUrl(
-																			availableImages[0].url,
-																		);
-																		setPendingImageOperations((prev) => ({
-																			...prev,
-																			mainImageUrl: availableImages[0].url,
-																		}));
-																	} else if (updatedUrls.length > 0) {
-																		setSelectedMainImageUrl(updatedUrls[0]);
-																		setPendingImageOperations((prev) => ({
-																			...prev,
-																			mainImageUrl: updatedUrls[0],
-																		}));
-																	}
+															// If deleted file was main image, select another
+															if (selectedMainImageUrl === fileUrl) {
+																if (availableImages.length > 0) {
+																	setSelectedMainImageUrl(
+																		availableImages[0].url,
+																	);
+																	setPendingImageOperations((prev) => ({
+																		...prev,
+																		mainImageUrl: availableImages[0].url,
+																	}));
+																} else if (updatedUrls.length > 0) {
+																	setSelectedMainImageUrl(updatedUrls[0]);
+																	setPendingImageOperations((prev) => ({
+																		...prev,
+																		mainImageUrl: updatedUrls[0],
+																	}));
 																}
-															}}
-															type="button"
-														>
-															<Trash2 className="mr-1 h-4 w-4" />
-															Delete
-														</Button>
-													)}
+															}
+														}}
+														type="button"
+													>
+														<Trash2 className="mr-1 h-4 w-4" />
+														Delete
+													</Button>
 												</div>
 											</div>
 										);
@@ -647,6 +657,13 @@ function EditListingRoute() {
 								<p className="mt-3 text-gray-500 text-xs">
 									Click on an image or use the "Set as Main" button to select
 									the main image. Use the "Delete" button to remove images.
+								</p>
+							</div>
+						) : (
+							<div className="rounded-lg border border-gray-300 border-dashed bg-gray-50 p-6 text-center">
+								<p className="text-gray-500 text-sm">
+									This listing currently has no images. You can add images using
+									the upload area above.
 								</p>
 							</div>
 						)}
