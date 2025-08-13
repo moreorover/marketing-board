@@ -265,11 +265,11 @@ function EditListingRoute() {
 
 	const handleFilesUpload = (files: File[]) => {
 		setNewFiles(files);
-		
+
 		// Create stable URLs for the files
-		const urls = files.map(file => URL.createObjectURL(file));
+		const urls = files.map((file) => URL.createObjectURL(file));
 		setNewFileUrls(urls);
-		
+
 		setPendingImageOperations((prev) => ({
 			...prev,
 			newFiles: files,
@@ -564,26 +564,28 @@ function EditListingRoute() {
 
 												<div className="flex gap-2">
 													{selectedMainImageUrl !== fileUrl && (
-														<Button
-															variant="outline"
-															size="sm"
-															onClick={() => {
-																setSelectedMainImageUrl(fileUrl);
-																setPendingImageOperations((prev) => ({
-																	...prev,
-																	mainImageUrl: fileUrl,
-																}));
-															}}
-															type="button"
-														>
-															<Star className="mr-1 h-4 w-4" />
-															Set as Main
-															<span className="ml-1 rounded bg-green-100 px-1.5 py-0.5 font-medium text-green-700 text-xs">
+														<>
+															<Button
+																variant="outline"
+																size="sm"
+																onClick={() => {
+																	setSelectedMainImageUrl(fileUrl);
+																	setPendingImageOperations((prev) => ({
+																		...prev,
+																		mainImageUrl: fileUrl,
+																	}));
+																}}
+																type="button"
+															>
+																<Star className="mr-1 h-4 w-4" />
+																Set as Main
+															</Button>
+															<span className="flex items-center rounded bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
 																New
 															</span>
-														</Button>
+														</>
 													)}
-													
+
 													{selectedMainImageUrl === fileUrl && (
 														<span className="flex items-center rounded bg-green-100 px-2 py-1 font-medium text-green-700 text-xs">
 															New
@@ -601,10 +603,10 @@ function EditListingRoute() {
 																const updatedUrls = newFileUrls.filter(
 																	(_, i) => i !== index,
 																);
-																
+
 																// Revoke the deleted URL to prevent memory leaks
 																URL.revokeObjectURL(fileUrl);
-																
+
 																setNewFiles(updatedFiles);
 																setNewFileUrls(updatedUrls);
 																setPendingImageOperations((prev) => ({
