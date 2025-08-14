@@ -44,16 +44,13 @@ function NewListingRoute() {
 	const handleSubmit = async ({
 		formData,
 		newFiles,
-		mainImageNewFileIndex,
 	}: {
 		formData: ListingFormData;
-		newFiles: { name: string; type: string; data: string }[];
-		mainImageNewFileIndex?: number;
+		newFiles: { name: string; type: string; data: string; main: boolean }[];
 	}) => {
 		await createMutation.mutateAsync({
 			...formData,
 			files: newFiles.length > 0 ? newFiles : undefined,
-			mainImageIndex: newFiles.length > 0 ? (mainImageNewFileIndex ?? 0) : undefined,
 		});
 	};
 

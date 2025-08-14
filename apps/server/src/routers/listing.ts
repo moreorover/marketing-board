@@ -109,10 +109,10 @@ export const listingRouter = router({
 							name: z.string(),
 							type: z.string(),
 							data: z.string(),
+							main: z.boolean().default(false),
 						}),
 					)
 					.optional(),
-				mainImageIndex: z.number().int().min(0).optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -132,12 +132,8 @@ export const listingRouter = router({
 
 			// Upload images and save to database
 			if (input.files && input.files.length > 0) {
-				const mainImageIndex = input.mainImageIndex ?? 0;
-
-				for (let i = 0; i < input.files.length; i++) {
-					const file = input.files[i];
+				for (const file of input.files) {
 					const buffer = Buffer.from(file.data, "base64");
-					const isMainImage = i === mainImageIndex;
 
 					// Upload to S3 and get object key
 					const objectKey = await uploadImage(buffer, listingId);
@@ -146,7 +142,7 @@ export const listingRouter = router({
 					await db.insert(listingImage).values({
 						listingId,
 						objectKey,
-						isMain: isMainImage,
+						isMain: file.main,
 					});
 				}
 			}

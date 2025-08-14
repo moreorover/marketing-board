@@ -30,7 +30,7 @@ interface ListingFormProps {
 	initialImages?: ListingImage[];
 	onSubmit: (data: {
 		formData: ListingFormData;
-		newFiles: { name: string; type: string; data: string }[];
+		newFiles: { name: string; type: string; data: string; main: boolean }[];
 		keepImages?: string[];
 		selectedMainImageUrl?: string;
 		mainImageIsNewFile?: boolean;
@@ -88,11 +88,12 @@ export function ListingForm({
 		onSubmit: async ({ value }) => {
 			try {
 				// Convert new files to base64 data
-				let fileData: { name: string; type: string; data: string }[] = [];
+				let fileData: { name: string; type: string; data: string; main: boolean }[] = [];
 				if (newFiles.length > 0) {
 					fileData = await Promise.all(
-						newFiles.map(async (file) => {
-							return new Promise<{ name: string; type: string; data: string }>(
+						newFiles.map(async (file, index) => {
+							const isMainFile = newFileUrls[index] === selectedMainImageUrl;
+							return new Promise<{ name: string; type: string; data: string; main: boolean }>(
 								(resolve) => {
 									const reader = new FileReader();
 									reader.onloadend = () => {
@@ -103,6 +104,7 @@ export function ListingForm({
 											name: file.name,
 											type: file.type,
 											data: base64String,
+											main: isMainFile,
 										});
 									};
 									reader.readAsDataURL(file);
