@@ -15,28 +15,25 @@ interface ListingCardProps {
 		title: string;
 		description: string;
 		location: string;
-		images?: Array<{ url: string }>;
+		images: Array<{ objectKey: string }>;
 	};
 	showActions?: boolean;
 	onDelete?: (id: string) => void;
 }
 
-export function ListingCard({ listing, showActions = false, onDelete }: ListingCardProps) {
+export function ListingCard({
+	listing,
+	showActions = false,
+	onDelete,
+}: ListingCardProps) {
 	return (
 		<Card key={listing.id}>
 			<CardHeader className="pb-3">
 				<div className="flex items-start justify-between">
 					<CardTitle className="text-lg">{listing.title}</CardTitle>
 					<div className="flex items-center space-x-1">
-						<Link
-							to="/listings/$listingId"
-							params={{ listingId: listing.id }}
-						>
-							<Button
-								variant="ghost"
-								size="icon"
-								aria-label="View listing"
-							>
+						<Link to="/listings/$listingId" params={{ listingId: listing.id }}>
+							<Button variant="ghost" size="icon" aria-label="View listing">
 								<ArrowUpRight className="h-4 w-4" />
 							</Button>
 						</Link>
@@ -57,7 +54,7 @@ export function ListingCard({ listing, showActions = false, onDelete }: ListingC
 				{listing.images && listing.images.length > 0 && (
 					<div className="mb-3">
 						<img
-							src={listing.images[0].url}
+							src={`https://img.prive.hair/${listing.images[0]}`}
 							alt={listing.title}
 							className="h-48 w-full rounded-md object-cover"
 						/>
@@ -67,9 +64,7 @@ export function ListingCard({ listing, showActions = false, onDelete }: ListingC
 					{listing.description}
 				</CardDescription>
 				{listing.location && (
-					<p className="text-muted-foreground text-sm">
-						📍 {listing.location}
-					</p>
+					<p className="text-muted-foreground text-sm">📍 {listing.location}</p>
 				)}
 			</CardContent>
 		</Card>

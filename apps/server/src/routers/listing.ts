@@ -34,27 +34,27 @@ export const listingRouter = router({
 			},
 		});
 
-		// Generate signed URLs for main images
-		const listingsWithSignedUrls = await Promise.all(
-			listingsWithMainImage.map(async (listingItem) => {
-				let mainImageUrl = "";
-				if (listingItem.images[0]?.objectKey) {
-					mainImageUrl = await generateSignedImageUrl(
-						listingItem.images[0].objectKey,
-						3600,
-					);
-				}
-				return {
-					id: listingItem.id,
-					title: listingItem.title,
-					description: listingItem.description,
-					location: listingItem.location,
-					images: mainImageUrl ? [{ url: mainImageUrl }] : [],
-				};
-			}),
-		);
+		// // Generate signed URLs for main images
+		// const listingsWithSignedUrls = await Promise.all(
+		// 	listingsWithMainImage.map(async (listingItem) => {
+		// 		let mainImageUrl = "";
+		// 		if (listingItem.images[0]?.objectKey) {
+		// 			mainImageUrl = await generateSignedImageUrl(
+		// 				listingItem.images[0].objectKey,
+		// 				3600,
+		// 			);
+		// 		}
+		// 		return {
+		// 			id: listingItem.id,
+		// 			title: listingItem.title,
+		// 			description: listingItem.description,
+		// 			location: listingItem.location,
+		// 			images: mainImageUrl ? [{ url: mainImageUrl }] : [],
+		// 		};
+		// 	}),
+		// );
 
-		return listingsWithSignedUrls;
+		return listingsWithMainImage;
 	}),
 
 	getAll: protectedProcedure.query(async ({ ctx }) => {
