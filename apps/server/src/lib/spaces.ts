@@ -10,10 +10,10 @@ import sharp from "sharp";
 
 const spacesClient = new S3Client({
 	region: "auto",
-	endpoint: process.env.DO_SPACES_ENDPOINT,
+	endpoint: process.env.R2_ENDPOINT,
 	credentials: {
-		accessKeyId: process.env.DO_SPACES_ACCESS_KEY!,
-		secretAccessKey: process.env.DO_SPACES_SECRET_KEY!,
+		accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+		secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
 	},
 });
 
@@ -28,7 +28,7 @@ export async function uploadImage(
 	nearLossless = true,
 ): Promise<string> {
 	const uniqueFileName = `${randomUUID()}.webp`;
-	const bucketName = process.env.DO_SPACES_BUCKET!;
+	const bucketName = process.env.R2_BUCKET_NAME!;
 
 	// Compress image using Sharp
 	const compressedBuffer = await sharp(imageBuffer)
@@ -60,7 +60,7 @@ export async function generateSignedImageUrl(
 	imageKey: string,
 	expiresIn = 3600,
 ): Promise<string> {
-	const bucketName = process.env.DO_SPACES_BUCKET!;
+	const bucketName = process.env.R2_BUCKET_NAME!;
 
 	const command = new GetObjectCommand({
 		Bucket: bucketName,
@@ -94,7 +94,7 @@ export async function generateSignedImageUrls(
  * Deletes an image from S3-compatible storage
  */
 export async function deleteImage(imageKey: string): Promise<void> {
-	const bucketName = process.env.DO_SPACES_BUCKET!;
+	const bucketName = process.env.R2_BUCKET_NAME!;
 
 	await spacesClient.send(
 		new DeleteObjectCommand({
