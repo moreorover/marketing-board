@@ -9,6 +9,7 @@ import { randomUUID } from "crypto";
 import sharp from "sharp";
 
 const spacesClient = new S3Client({
+	region: "auto",
 	endpoint: process.env.DO_SPACES_ENDPOINT,
 	credentials: {
 		accessKeyId: process.env.DO_SPACES_ACCESS_KEY!,
