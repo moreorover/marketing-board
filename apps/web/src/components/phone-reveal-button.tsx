@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { Loader2, MessageCircle, Phone } from "lucide-react";
+import { Loader2, Phone } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { trpc } from "@/utils/trpc";
+import WhatsAppButtonGreenSmall from "../../static/WhatsAppButtonGreenSmall.svg";
 
 interface PhoneRevealButtonProps {
 	listingId: string;
@@ -86,7 +87,7 @@ export function PhoneRevealButton({ listingId }: PhoneRevealButtonProps) {
 							</Button>
 							{/** biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
 							<img
-								src="/static/WhatsAppButtonGreenLarge.svg"
+								src={WhatsAppButtonGreenSmall}
 								alt="Send WhatsApp message"
 								className="h-8 w-auto cursor-pointer rounded transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
 								onClick={() => openWhatsApp(phoneNumber)}
