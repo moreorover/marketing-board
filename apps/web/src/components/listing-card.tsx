@@ -54,7 +54,7 @@ export function ListingCard({
 				{listing.images && listing.images.length > 0 && (
 					<div className="mb-3">
 						<img
-							src={`https://img.prive.hair/${listing.images[0].objectKey}`}
+							src={`${import.meta.env.VITE_SERVER_URL}/${listing.images[0].objectKey}`}
 							alt={listing.title}
 							className="h-48 w-full rounded-md object-cover"
 						/>
