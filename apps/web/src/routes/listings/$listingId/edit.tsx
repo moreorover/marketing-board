@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { ListingForm, type ListingFormData } from "@/components/ListingForm";
+import Loader from "@/components/loader";
 import {
 	Card,
 	CardContent,
@@ -15,6 +15,12 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/listings/$listingId/edit")({
+	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
+		await queryClient.ensureQueryData(
+			trpc.listing.getEditById.queryOptions({ listingId }),
+		);
+	},
+	pendingComponent: Loader,
 	component: EditListingRoute,
 });
 
@@ -24,28 +30,20 @@ function EditListingRoute() {
 	const navigate = Route.useNavigate();
 
 	const listingQuery = useQuery(
-		trpc.listing.getById.queryOptions({ listingId }),
+		trpc.listing.getEditById.queryOptions({ listingId }),
 	);
-	const listing = listingQuery.data?.[0];
+	const listing = listingQuery.data;
 
 	// Check if current user owns this listing
 	const isOwner = listing?.userId === session?.user.id;
 
 	useEffect(() => {
-		if (!session && !sessionPending) {
-			navigate({
-				to: "/login",
-			});
-		}
-	}, [session, sessionPending]);
-
-	useEffect(() => {
-		if (!isOwner && listing) {
+		if (!session || !sessionPending || !isOwner) {
 			navigate({
 				to: "/",
 			});
 		}
-	}, [isOwner, listing]);
+	}, [session, sessionPending, isOwner]);
 
 	const updateListingMutation = useMutation(
 		trpc.listing.update.mutationOptions({
@@ -91,14 +89,6 @@ function EditListingRoute() {
 			params: { listingId },
 		});
 	};
-
-	if (sessionPending || listingQuery.isLoading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<Loader2 className="h-8 w-8 animate-spin" />
-			</div>
-		);
-	}
 
 	if (!listing) {
 		return (
