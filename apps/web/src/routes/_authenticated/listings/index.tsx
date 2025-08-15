@@ -15,7 +15,7 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
-export const Route = createFileRoute("/listings/")({
+export const Route = createFileRoute("/_authenticated/listings/")({
 	loader: async ({ context: { trpc, queryClient } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getMyListings.queryOptions(),

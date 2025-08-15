@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
-export const Route = createFileRoute("/profile")({
+export const Route = createFileRoute("/_authenticated/profile")({
 	component: RouteComponent,
 });
 
@@ -19,7 +19,7 @@ function RouteComponent() {
 		if (!session && !isPending) {
 			navigate({
 				to: "/login",
-			});
+			})
 		}
 	}, [session, isPending]);
 
@@ -34,5 +34,5 @@ function RouteComponent() {
 			<p>privateData: {privateData.data?.message}</p>
 			<p>listings: {privateData.data?.message}</p>
 		</div>
-	);
+	)
 }

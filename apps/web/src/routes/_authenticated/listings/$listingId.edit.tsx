@@ -14,11 +14,13 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
-export const Route = createFileRoute("/listings/$listingId/edit")({
+export const Route = createFileRoute(
+	"/_authenticated/listings/$listingId/edit",
+)({
 	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getEditById.queryOptions({ listingId }),
-		)
+		);
 	},
 	pendingComponent: Loader,
 	component: EditListingRoute,
@@ -31,19 +33,19 @@ function EditListingRoute() {
 
 	const listingQuery = useQuery(
 		trpc.listing.getEditById.queryOptions({ listingId }),
-	)
+	);
 	const listing = listingQuery.data;
 
 	// Check if current user owns this listing
 	const isOwner = listing?.userId === session?.user.id;
 
 	useEffect(() => {
-		if (!session || !sessionPending || !isOwner) {
+		if (!isOwner && !sessionPending) {
 			navigate({
 				to: "/",
-			})
+			});
 		}
-	}, [session, sessionPending, isOwner]);
+	}, [isOwner, sessionPending]);
 
 	const updateListingMutation = useMutation(
 		trpc.listing.update.mutationOptions({
@@ -55,7 +57,7 @@ function EditListingRoute() {
 				toast.error(error.message || "Failed to update listing.");
 			},
 		}),
-	)
+	);
 
 	const handleSubmit = async ({
 		formData,
@@ -80,15 +82,15 @@ function EditListingRoute() {
 			newMainImageUrl: selectedMainImageUrl,
 			mainImageIsNewFile,
 			mainImageNewFileIndex,
-		})
-	}
+		});
+	};
 
 	const handleCancel = () => {
 		navigate({
 			to: "/listings/$listingId",
 			params: { listingId },
-		})
-	}
+		});
+	};
 
 	if (!listing) {
 		return (
@@ -99,7 +101,7 @@ function EditListingRoute() {
 					</CardContent>
 				</Card>
 			</div>
-		)
+		);
 	}
 
 	return (
@@ -129,5 +131,5 @@ function EditListingRoute() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

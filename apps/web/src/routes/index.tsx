@@ -1,13 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight, Loader2 } from "lucide-react";
-import Loader from "@/components/loader";
 import { ListingCard } from "@/components/listing-card";
+import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/")({
@@ -29,12 +26,6 @@ function HomeComponent() {
 					<section>
 						<div className="mb-4 flex items-center justify-between">
 							<h2 className="font-semibold text-xl">Recent Listings</h2>
-							<Link to="/listings">
-								<Button variant="outline" size="sm">
-									View All
-									<ArrowUpRight className="ml-1 h-4 w-4" />
-								</Button>
-							</Link>
 						</div>
 
 						{listings.isLoading ? (
