@@ -12,7 +12,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/listings/$listingId/")({
