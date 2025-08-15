@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(touch:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm add:*)"
     ],
     "deny": []
   }

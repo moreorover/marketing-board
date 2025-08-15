@@ -20,6 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm db:generate` - Generate database migrations
 - `pnpm db:migrate` - Run database migrations
 - `pnpm db:start` - Start PostgreSQL via Docker Compose
+- `pnpm db:watch` - Start PostgreSQL in watch mode (foreground)
 - `pnpm db:stop` - Stop PostgreSQL containers
 - `pnpm db:down` - Remove PostgreSQL containers
 
@@ -70,6 +71,7 @@ This is a Turborepo monorepo with two main applications:
 - Drizzle schema files in `apps/server/src/db/schema/`
 - Auth tables: `user`, `session`, `account`, `verification`
 - Todo tables: defined in `apps/server/src/db/schema/todo.ts`
+- Listing tables: defined in `apps/server/src/db/schema/listing.ts`
 
 **Routing:**
 - TanStack Router with file-based routing in `apps/web/src/routes/`
@@ -87,3 +89,14 @@ This is a Turborepo monorepo with two main applications:
 - TypeScript strict mode enabled
 - shadcn/ui component patterns with `cn()` utility for class merging
 - tRPC procedures follow `publicProcedure` vs `protectedProcedure` pattern
+
+### Error Handling
+- tRPC client includes automatic error handling with toast notifications in `apps/web/src/utils/trpc.ts`
+- Query cache configured to show error toasts with retry functionality
+- Protected procedures throw `UNAUTHORIZED` errors when session is missing
+
+### Development Notes
+- Route tree (`routeTree.gen.ts`) is auto-generated and excluded from version control
+- TanStack Router and React Query devtools are enabled in development mode
+- Server uses `tsx watch` for hot reloading during development
+- Web application uses Vite's HMR for fast development feedback
