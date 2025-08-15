@@ -15,25 +15,28 @@ interface ListingCardProps {
 		title: string;
 		description: string;
 		location: string;
-		images: Array<{ objectKey: string }>;
+		images?: Array<{ url: string }>;
 	};
 	showActions?: boolean;
 	onDelete?: (id: string) => void;
 }
 
-export function ListingCard({
-	listing,
-	showActions = false,
-	onDelete,
-}: ListingCardProps) {
+export function ListingCard({ listing, showActions = false, onDelete }: ListingCardProps) {
 	return (
 		<Card key={listing.id}>
 			<CardHeader className="pb-3">
 				<div className="flex items-start justify-between">
 					<CardTitle className="text-lg">{listing.title}</CardTitle>
 					<div className="flex items-center space-x-1">
-						<Link to="/listings/$listingId" params={{ listingId: listing.id }}>
-							<Button variant="ghost" size="icon" aria-label="View listing">
+						<Link
+							to="/listings/$listingId"
+							params={{ listingId: listing.id }}
+						>
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label="View listing"
+							>
 								<ArrowUpRight className="h-4 w-4" />
 							</Button>
 						</Link>
@@ -54,7 +57,7 @@ export function ListingCard({
 				{listing.images && listing.images.length > 0 && (
 					<div className="mb-3">
 						<img
-							src={`${import.meta.env.VITE_SERVER_URL}/${listing.images[0].objectKey}`}
+							src={listing.images[0].url}
 							alt={listing.title}
 							className="h-48 w-full rounded-md object-cover"
 						/>
@@ -64,7 +67,9 @@ export function ListingCard({
 					{listing.description}
 				</CardDescription>
 				{listing.location && (
-					<p className="text-muted-foreground text-sm">📍 {listing.location}</p>
+					<p className="text-muted-foreground text-sm">
+						📍 {listing.location}
+					</p>
 				)}
 			</CardContent>
 		</Card>
