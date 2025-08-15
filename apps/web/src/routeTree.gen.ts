@@ -15,8 +15,8 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ListingsIndexRouteImport } from './routes/listings/index'
 import { Route as ListingsNewRouteImport } from './routes/listings/new'
-import { Route as ListingsListingIdIndexRouteImport } from './routes/listings/$listingId/index'
-import { Route as ListingsListingIdEditRouteImport } from './routes/listings/$listingId/edit'
+import { Route as ListingsListingIdRouteImport } from './routes/listings/$listingId'
+import { Route as ListingsListingIdEditRouteImport } from './routes/listings/$listingId.edit'
 
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
@@ -48,15 +48,15 @@ const ListingsNewRoute = ListingsNewRouteImport.update({
   path: '/listings/new',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ListingsListingIdIndexRoute = ListingsListingIdIndexRouteImport.update({
-  id: '/listings/$listingId/',
-  path: '/listings/$listingId/',
+const ListingsListingIdRoute = ListingsListingIdRouteImport.update({
+  id: '/listings/$listingId',
+  path: '/listings/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListingsListingIdEditRoute = ListingsListingIdEditRouteImport.update({
-  id: '/listings/$listingId/edit',
-  path: '/listings/$listingId/edit',
-  getParentRoute: () => rootRouteImport,
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => ListingsListingIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -64,20 +64,20 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
   '/listings/$listingId/edit': typeof ListingsListingIdEditRoute
-  '/listings/$listingId': typeof ListingsListingIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
   '/listings/$listingId/edit': typeof ListingsListingIdEditRoute
-  '/listings/$listingId': typeof ListingsListingIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,10 +85,10 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/listings/$listingId': typeof ListingsListingIdRouteWithChildren
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
   '/listings/$listingId/edit': typeof ListingsListingIdEditRoute
-  '/listings/$listingId/': typeof ListingsListingIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,30 +97,30 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/profile'
+    | '/listings/$listingId'
     | '/listings/new'
     | '/listings'
     | '/listings/$listingId/edit'
-    | '/listings/$listingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/login'
     | '/profile'
+    | '/listings/$listingId'
     | '/listings/new'
     | '/listings'
     | '/listings/$listingId/edit'
-    | '/listings/$listingId'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/login'
     | '/profile'
+    | '/listings/$listingId'
     | '/listings/new'
     | '/listings/'
     | '/listings/$listingId/edit'
-    | '/listings/$listingId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -128,10 +128,9 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
+  ListingsListingIdRoute: typeof ListingsListingIdRouteWithChildren
   ListingsNewRoute: typeof ListingsNewRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
-  ListingsListingIdEditRoute: typeof ListingsListingIdEditRoute
-  ListingsListingIdIndexRoute: typeof ListingsListingIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -178,32 +177,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/listings/$listingId/': {
-      id: '/listings/$listingId/'
+    '/listings/$listingId': {
+      id: '/listings/$listingId'
       path: '/listings/$listingId'
       fullPath: '/listings/$listingId'
-      preLoaderRoute: typeof ListingsListingIdIndexRouteImport
+      preLoaderRoute: typeof ListingsListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/listings/$listingId/edit': {
       id: '/listings/$listingId/edit'
-      path: '/listings/$listingId/edit'
+      path: '/edit'
       fullPath: '/listings/$listingId/edit'
       preLoaderRoute: typeof ListingsListingIdEditRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof ListingsListingIdRoute
     }
   }
 }
+
+interface ListingsListingIdRouteChildren {
+  ListingsListingIdEditRoute: typeof ListingsListingIdEditRoute
+}
+
+const ListingsListingIdRouteChildren: ListingsListingIdRouteChildren = {
+  ListingsListingIdEditRoute: ListingsListingIdEditRoute,
+}
+
+const ListingsListingIdRouteWithChildren =
+  ListingsListingIdRoute._addFileChildren(ListingsListingIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
+  ListingsListingIdRoute: ListingsListingIdRouteWithChildren,
   ListingsNewRoute: ListingsNewRoute,
   ListingsIndexRoute: ListingsIndexRoute,
-  ListingsListingIdEditRoute: ListingsListingIdEditRoute,
-  ListingsListingIdIndexRoute: ListingsListingIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

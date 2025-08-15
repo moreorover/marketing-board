@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Trash2 } from "lucide-react";
+import { ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ListingCardProps {
 	listing: {
@@ -37,14 +31,24 @@ export function ListingCard({
 							</Button>
 						</Link>
 						{showActions && onDelete && (
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => onDelete(listing.id)}
-								aria-label="Delete listing"
-							>
-								<Trash2 className="h-4 w-4" />
-							</Button>
+							<>
+								<Link
+									to="/listings/$listingId/edit"
+									params={{ listingId: listing.id }}
+								>
+									<Button variant="ghost" size="icon" aria-label="Edit listing">
+										<Pencil className="h-4 w-4" />
+									</Button>
+								</Link>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => onDelete(listing.id)}
+									aria-label="Delete listing"
+								>
+									<Trash2 className="h-4 w-4" />
+								</Button>
+							</>
 						)}
 					</div>
 				</div>

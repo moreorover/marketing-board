@@ -18,7 +18,7 @@ export const Route = createFileRoute("/listings/$listingId/edit")({
 	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getEditById.queryOptions({ listingId }),
-		);
+		)
 	},
 	pendingComponent: Loader,
 	component: EditListingRoute,
@@ -31,7 +31,7 @@ function EditListingRoute() {
 
 	const listingQuery = useQuery(
 		trpc.listing.getEditById.queryOptions({ listingId }),
-	);
+	)
 	const listing = listingQuery.data;
 
 	// Check if current user owns this listing
@@ -41,7 +41,7 @@ function EditListingRoute() {
 		if (!session || !sessionPending || !isOwner) {
 			navigate({
 				to: "/",
-			});
+			})
 		}
 	}, [session, sessionPending, isOwner]);
 
@@ -55,7 +55,7 @@ function EditListingRoute() {
 				toast.error(error.message || "Failed to update listing.");
 			},
 		}),
-	);
+	)
 
 	const handleSubmit = async ({
 		formData,
@@ -80,15 +80,15 @@ function EditListingRoute() {
 			newMainImageUrl: selectedMainImageUrl,
 			mainImageIsNewFile,
 			mainImageNewFileIndex,
-		});
-	};
+		})
+	}
 
 	const handleCancel = () => {
 		navigate({
 			to: "/listings/$listingId",
 			params: { listingId },
-		});
-	};
+		})
+	}
 
 	if (!listing) {
 		return (
@@ -99,7 +99,7 @@ function EditListingRoute() {
 					</CardContent>
 				</Card>
 			</div>
-		);
+		)
 	}
 
 	return (
@@ -129,5 +129,5 @@ function EditListingRoute() {
 				</CardContent>
 			</Card>
 		</div>
-	);
+	)
 }

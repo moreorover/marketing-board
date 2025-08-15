@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/card";
 import { trpc } from "@/utils/trpc";
 
-export const Route = createFileRoute("/listings/$listingId/")({
+export const Route = createFileRoute("/listings/$listingId")({
 	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getById.queryOptions({ listingId }),
-		);
+		)
 	},
 	pendingComponent: Loader,
 	component: RouteComponent,
@@ -30,7 +30,7 @@ function RouteComponent() {
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
-	);
+	)
 	const listing = listingQuery.data?.[0];
 
 	if (!listing) {
@@ -42,11 +42,11 @@ function RouteComponent() {
 
 	const nextImage = () => {
 		setCurrentImageIndex((prev) => (prev + 1) % images.length);
-	};
+	}
 
 	const prevImage = () => {
 		setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
-	};
+	}
 
 	return (
 		<div className="mx-auto w-full max-w-4xl py-10">
@@ -158,5 +158,5 @@ function RouteComponent() {
 				</div>
 			</div>
 		</div>
-	);
+	)
 }

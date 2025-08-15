@@ -70,7 +70,7 @@ function ListingsRoute() {
 				<CardHeader>
 					<div className="flex items-center justify-between">
 						<div>
-							<CardTitle>Listings</CardTitle>
+							<CardTitle>My Listings</CardTitle>
 							<CardDescription>
 								Manage your listings efficiently
 							</CardDescription>
