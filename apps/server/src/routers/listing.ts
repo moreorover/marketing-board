@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import z from "zod";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
@@ -55,11 +55,45 @@ export const listingRouter = router({
 		return listingsWithSignedUrl;
 	}),
 
-	getAll: protectedProcedure.query(async ({ ctx }) => {
-		return db
-			.select()
-			.from(listing)
-			.where(eq(listing.userId, ctx.session.user.id));
+	getMyListings: protectedProcedure.query(async ({ ctx }) => {
+		const listingsWithMainImage = await db.query.listing.findMany({
+			columns: {
+				id: true,
+				title: true,
+				location: true,
+			},
+			where: eq(listing.userId, ctx.session.user.id),
+			with: {
+				images: {
+					where: eq(listingImage.isMain, true),
+					columns: {
+						objectKey: true,
+					},
+					limit: 1,
+				},
+			},
+		});
+
+		// Generate signed URLs for main images
+		const listingsWithSignedUrl = await Promise.all(
+			listingsWithMainImage.map(async (listingItem) => {
+				let mainImageUrl: string | null = null;
+				if (listingItem.images[0]?.objectKey) {
+					mainImageUrl = await generateSignedImageUrl(
+						listingItem.images[0].objectKey,
+						3600,
+					);
+				}
+				return {
+					id: listingItem.id,
+					title: listingItem.title,
+					location: listingItem.location,
+					image: mainImageUrl,
+				};
+			}),
+		);
+
+		return listingsWithSignedUrl;
 	}),
 
 	getEditById: protectedProcedure
