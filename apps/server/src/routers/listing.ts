@@ -66,6 +66,7 @@ export const listingRouter = router({
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ input }) => {
 			const listingResult = await db.query.listing.findFirst({
+				columns: { id: true, title: true, location: true, description: true },
 				where: eq(listing.id, input.listingId),
 				with: {
 					images: {},
@@ -80,15 +81,18 @@ export const listingRouter = router({
 				});
 			}
 
-			const listingItem = listingResult;
-			const imageKeys = listingResult.images.map((i) => i.objectKey);
+			const imageKeys = listingResult.images.map((i) => ({
+				imageKey: i.objectKey,
+				isMain: i.isMain,
+			}));
 			const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
 
 			return [
 				{
-					...listingItem,
-					images: imageKeys.map((key: string) => ({
-						url: signedUrls[key] || "",
+					...listingResult,
+					images: signedUrls.map((image) => ({
+						url: image.url,
+						isMain: image.isMain,
 					})),
 				},
 			];
