@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TodosRouteImport } from './routes/todos'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -19,11 +18,6 @@ import { Route as ListingsNewRouteImport } from './routes/listings/new'
 import { Route as ListingsListingIdIndexRouteImport } from './routes/listings/$listingId/index'
 import { Route as ListingsListingIdEditRouteImport } from './routes/listings/$listingId/edit'
 
-const TodosRoute = TodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -70,7 +64,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
-  '/todos': typeof TodosRoute
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
   '/listings/$listingId/edit': typeof ListingsListingIdEditRoute
@@ -81,7 +74,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
-  '/todos': typeof TodosRoute
   '/listings/new': typeof ListingsNewRoute
   '/listings': typeof ListingsIndexRoute
   '/listings/$listingId/edit': typeof ListingsListingIdEditRoute
@@ -93,7 +85,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
-  '/todos': typeof TodosRoute
   '/listings/new': typeof ListingsNewRoute
   '/listings/': typeof ListingsIndexRoute
   '/listings/$listingId/edit': typeof ListingsListingIdEditRoute
@@ -106,7 +97,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/profile'
-    | '/todos'
     | '/listings/new'
     | '/listings'
     | '/listings/$listingId/edit'
@@ -117,7 +107,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/profile'
-    | '/todos'
     | '/listings/new'
     | '/listings'
     | '/listings/$listingId/edit'
@@ -128,7 +117,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/profile'
-    | '/todos'
     | '/listings/new'
     | '/listings/'
     | '/listings/$listingId/edit'
@@ -140,7 +128,6 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
-  TodosRoute: typeof TodosRoute
   ListingsNewRoute: typeof ListingsNewRoute
   ListingsIndexRoute: typeof ListingsIndexRoute
   ListingsListingIdEditRoute: typeof ListingsListingIdEditRoute
@@ -149,13 +136,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/todos': {
-      id: '/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof TodosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -220,7 +200,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
-  TodosRoute: TodosRoute,
   ListingsNewRoute: ListingsNewRoute,
   ListingsIndexRoute: ListingsIndexRoute,
   ListingsListingIdEditRoute: ListingsListingIdEditRoute,
