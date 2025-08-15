@@ -20,7 +20,6 @@ export const listingRouter = router({
 			columns: {
 				id: true,
 				title: true,
-				description: true,
 				location: true,
 			},
 			with: {
@@ -35,9 +34,9 @@ export const listingRouter = router({
 		});
 
 		// Generate signed URLs for main images
-		const listingsWithSignedUrls = await Promise.all(
+		const listingsWithSignedUrl = await Promise.all(
 			listingsWithMainImage.map(async (listingItem) => {
-				let mainImageUrl = "";
+				let mainImageUrl: string | null = null;
 				if (listingItem.images[0]?.objectKey) {
 					mainImageUrl = await generateSignedImageUrl(
 						listingItem.images[0].objectKey,
@@ -47,14 +46,13 @@ export const listingRouter = router({
 				return {
 					id: listingItem.id,
 					title: listingItem.title,
-					description: listingItem.description,
 					location: listingItem.location,
-					images: mainImageUrl ? [{ url: mainImageUrl }] : [],
+					image: mainImageUrl,
 				};
 			}),
 		);
 
-		return listingsWithSignedUrls;
+		return listingsWithSignedUrl;
 	}),
 
 	getAll: protectedProcedure.query(async ({ ctx }) => {
