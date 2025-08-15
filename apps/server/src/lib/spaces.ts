@@ -73,30 +73,29 @@ export async function generateSignedImageUrl(
 
 /**
  * Generate signed URLs for multiple images with metadata
+ * Skips images that fail to generate signed URLs
  */
 export async function generateSignedImageUrls(
 	images: { imageKey: string; isMain: boolean }[],
 	expiresIn = 3600,
-): Promise<{ imageKey: string; isMain: boolean; url: string | null }[]> {
-	const results = await Promise.all(
+): Promise<{ imageKey: string; isMain: boolean; url: string }[]> {
+	const results: { imageKey: string; isMain: boolean; url: string }[] = [];
+	
+	await Promise.all(
 		images.map(async (image) => {
 			try {
 				const url = await generateSignedImageUrl(image.imageKey, expiresIn);
-				return {
+				results.push({
 					imageKey: image.imageKey,
 					isMain: image.isMain,
 					url,
-				};
+				});
 			} catch (error) {
 				console.error(
 					`Failed to generate signed URL for ${image.imageKey}:`,
 					error,
 				);
-				return {
-					imageKey: image.imageKey,
-					isMain: image.isMain,
-					url: null,
-				};
+				// Skip this image by not pushing to results
 			}
 		}),
 	);
