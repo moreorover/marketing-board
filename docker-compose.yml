@@ -30,6 +30,8 @@ services:
       - POSTGRES_HOST=postcodes-db
     ports:
       - "8000:8000"
+    networks:
+      - app-network
   postcodes-db:
     image: idealpostcodes/postcodes.io.db:latest
     restart: unless-stopped
