@@ -110,6 +110,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+      - caddy_logs:/var/log/caddy
     environment:
       - DOMAIN=${DOMAIN:-localhost}
     depends_on:
@@ -123,6 +124,7 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+  caddy_logs:
 
 networks:
   app-network:
