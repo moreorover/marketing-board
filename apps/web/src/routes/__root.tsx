@@ -13,13 +13,25 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import type { trpc } from "@/utils/trpc";
 import "../index.css";
+import type { Session, User } from "better-auth";
+import { authClient } from "@/lib/auth-client";
 
 export interface RouterAppContext {
 	trpc: typeof trpc;
 	queryClient: QueryClient;
+	auth: { session: Session; user: User } | null;
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
+	beforeLoad: async ({ context }) => {
+		const session = await context.queryClient.ensureQueryData({
+			queryKey: ["session"],
+			queryFn: () => authClient.getSession(),
+			revalidateIfStale: true,
+			// staleTime: 10000,
+		});
+		return { auth: session.data };
+	},
 	component: RootComponent,
 	head: () => ({
 		meta: [

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { ListingCard } from "@/components/listing-card";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";

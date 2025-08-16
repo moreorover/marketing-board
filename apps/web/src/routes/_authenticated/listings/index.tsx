@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/listings/")({
 	},
 	pendingComponent: Loader,
 	component: ListingsRoute,
+	preload: false,
 });
 
 function ListingsRoute() {
