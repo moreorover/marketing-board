@@ -21,9 +21,6 @@ services:
   postcodes-api:
     image: idealpostcodes/postcodes.io:latest
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: ./Dockerfile
     depends_on:
       - postcodes-db
     environment:
