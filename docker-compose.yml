@@ -3,6 +3,7 @@ services:
   postgres:
     container_name: postgres
     image: postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: marketing_board
       POSTGRES_USER: postgres
@@ -32,6 +33,11 @@ services:
       - "8000:8000"
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
   postcodes-db:
     image: idealpostcodes/postcodes.io.db:latest
     restart: unless-stopped
@@ -39,6 +45,8 @@ services:
       - POSTGRES_DB=postcodesiodb
       - POSTGRES_PASSWORD=secret
       - POSTGRES_USER=postcodesio
+    networks:
+      - app-network
   # Server Application
   server:
     container_name: server
