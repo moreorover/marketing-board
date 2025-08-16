@@ -18,6 +18,28 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+  postcodes-api:
+    image: idealpostcodes/postcodes.io:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      - postcodes-db
+    environment:
+      - POSTGRES_DATABASE=postcodesiodb
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=postcodesio
+      - POSTGRES_HOST=postcodes-db
+    ports:
+      - 8000:8000
+  postcodes-db:
+    image: idealpostcodes/postcodes.io.db:latest
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=postcodesiodb
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=postcodesio
 
 volumes:
   postgres_data:

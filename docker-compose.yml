@@ -18,7 +18,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+  postcodes-api:
+    image: idealpostcodes/postcodes.io:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_DATABASE=postcodesiodb
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=postcodesio
+      - POSTGRES_HOST=postcodes-db
+    ports:
+      - "8000:8000"
+  postcodes-db:
+    image: idealpostcodes/postcodes.io.db:latest
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=postcodesiodb
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=postcodesio
   # Server Application
   server:
     container_name: server
@@ -28,6 +49,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/marketing_board
+      - POSTCODES_URL=http://postcodes-api:8000
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-https://localhost}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://localhost}
@@ -37,6 +59,8 @@ services:
       - R2_BUCKET_NAME=${R2_BUCKET_NAME:-marketing}
     depends_on:
       postgres:
+        condition: service_healthy
+      postcodes-api:
         condition: service_healthy
     networks:
       - app-network
