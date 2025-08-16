@@ -1,18 +1,18 @@
-import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import {TRPCError} from "@trpc/server";
+import {and, eq} from "drizzle-orm";
 import z from "zod";
-import { phoneView } from "@/db/schema/phone-view";
-import { db } from "../db";
-import { listing } from "../db/schema/listing";
-import { listingImage } from "../db/schema/listing-image";
+import {phoneView} from "@/db/schema/phone-view";
+import {db} from "../db";
+import {listing} from "../db/schema/listing";
+import {listingImage} from "../db/schema/listing-image";
 import {
-	deleteImage,
-	extractKeyFromUrl,
-	generateSignedImageUrl,
-	generateSignedImageUrls,
-	uploadImage,
+  deleteImage,
+  extractKeyFromUrl,
+  generateSignedImageUrl,
+  generateSignedImageUrls,
+  uploadImage,
 } from "../lib/spaces";
-import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
+import {protectedProcedure, publicProcedure, router} from "../lib/trpc";
 
 export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
@@ -21,6 +21,7 @@ export const listingRouter = router({
 				id: true,
 				title: true,
 				location: true,
+				city: true,
 			},
 			with: {
 				images: {
@@ -47,6 +48,7 @@ export const listingRouter = router({
 					id: listingItem.id,
 					title: listingItem.title,
 					location: listingItem.location,
+					city: listingItem.city,
 					image: mainImageUrl,
 				};
 			}),
@@ -61,6 +63,7 @@ export const listingRouter = router({
 				id: true,
 				title: true,
 				location: true,
+				city: true,
 			},
 			where: eq(listing.userId, ctx.session.user.id),
 			with: {
@@ -88,6 +91,7 @@ export const listingRouter = router({
 					id: listingItem.id,
 					title: listingItem.title,
 					location: listingItem.location,
+					city: listingItem.city,
 					image: mainImageUrl,
 				};
 			}),
@@ -136,7 +140,13 @@ export const listingRouter = router({
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ input }) => {
 			const listingResult = await db.query.listing.findFirst({
-				columns: { id: true, title: true, location: true, description: true },
+				columns: {
+					id: true,
+					title: true,
+					city: true,
+					location: true,
+					description: true,
+				},
 				where: eq(listing.id, input.listingId),
 				with: {
 					images: {},
@@ -175,6 +185,8 @@ export const listingRouter = router({
 				description: z.string().min(1),
 				location: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
+				city: z.string().min(1),
+				postcode: z.string().min(1, "Postcode is required"),
 				files: z
 					.array(
 						z.object({
@@ -195,6 +207,8 @@ export const listingRouter = router({
 					title: input.title,
 					description: input.description,
 					location: input.location,
+					postcode: input.postcode,
+					city: input.city,
 					phone: input.phone,
 					userId: ctx.session.user.id,
 				})
@@ -229,6 +243,8 @@ export const listingRouter = router({
 				title: z.string().min(1),
 				description: z.string().min(1),
 				location: z.string().min(1),
+				city: z.string().min(1),
+				postcode: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				keepImages: z.array(z.string()).optional(),
 				newMainImageUrl: z.string().optional(),
@@ -336,6 +352,8 @@ export const listingRouter = router({
 					description: input.description,
 					location: input.location,
 					phone: input.phone,
+					city: input.city,
+					postcode: input.postcode,
 				})
 				.where(eq(listing.id, input.id));
 		}),

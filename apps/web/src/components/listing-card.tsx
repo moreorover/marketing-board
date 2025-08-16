@@ -1,7 +1,7 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {Link} from "@tanstack/react-router";
+import {ArrowUpRight, Pencil, Trash2} from "lucide-react";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 
 interface ListingCardProps {
 	listing: {
@@ -9,6 +9,7 @@ interface ListingCardProps {
 		title: string;
 		location: string;
 		image: string | null;
+		city: string;
 	};
 	showActions?: boolean;
 	onDelete?: (id: string) => void;
@@ -64,7 +65,9 @@ export function ListingCard({
 					</div>
 				)}
 				{listing.location && (
-					<p className="text-muted-foreground text-sm">📍 {listing.location}</p>
+					<p className="text-muted-foreground text-sm">
+						📍 {listing.city}, {listing.location}
+					</p>
 				)}
 			</CardContent>
 		</Card>

@@ -1,18 +1,12 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, useRouteContext } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { toast } from "sonner";
-import { ListingForm, type ListingFormData } from "@/components/ListingForm";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {createFileRoute} from "@tanstack/react-router";
+import {useEffect} from "react";
+import {toast} from "sonner";
+import {ListingForm, type ListingFormData} from "@/components/ListingForm";
 import Loader from "@/components/loader";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
-import { trpc } from "@/utils/trpc";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {useAuth} from "@/hooks/useAuth";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute(
 	"/_authenticated/listings/$listingId/edit",
@@ -122,6 +116,8 @@ function EditListingRoute() {
 							description: listing.description,
 							location: listing.location,
 							phone: listing.phone,
+							city: listing.city,
+							postcode: listing.postcode,
 						}}
 						initialImages={listing.images || []}
 						onSubmit={handleSubmit}

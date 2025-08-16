@@ -13,10 +13,10 @@ import {trpc} from "@/utils/trpc";
 const FormSchema = z.object({
 	title: z.string().min(1),
 	description: z.string().min(1),
-	location: z.string().min(1),
+	location: z.string().min(1), // Will be auto-filled from admin_ward
 	phone: z.string().startsWith("+44").min(13).max(13),
 	postcode: z.string().min(1, "Postcode is required"),
-	city: z.string().min(1),
+	city: z.string().min(1), // Will be auto-filled from admin_district
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -242,10 +242,11 @@ export function ListingForm({
 		},
 	});
 
-	// Auto-update city field when postcode data is available
+	// Auto-update city and location fields when postcode data is available
 	useEffect(() => {
 		if (postcodeData) {
 			form.setFieldValue("city", postcodeData.admin_district);
+			form.setFieldValue("location", postcodeData.admin_ward);
 		}
 	}, [postcodeData, form]);
 
@@ -297,55 +298,30 @@ export function ListingForm({
 			}}
 			className="space-y-6"
 		>
-			{/* Listing Details Form Fields */}
-			<div className="grid gap-4 md:grid-cols-2">
-				<form.Field name="title">
-					{({ name, state, handleChange, handleBlur }) => (
-						<div>
-							<Label htmlFor={name}>Title</Label>
-							<Input
-								id={name}
-								name={name}
-								value={state.value}
-								onBlur={handleBlur}
-								onChange={(e) => handleChange(e.target.value)}
-								placeholder="Enter listing title..."
-								disabled={isSubmitting}
-							/>
-							{state.meta.errors.length > 0 && state.meta.isTouched && (
-								<div className="mt-1 text-red-500 text-sm">
-									{state.meta.errors[0]?.message}
-								</div>
-							)}
-						</div>
-					)}
-				</form.Field>
+			<form.Field name="title">
+				{({ name, state, handleChange, handleBlur }) => (
+					<div>
+						<Label htmlFor={name}>Title</Label>
+						<Input
+							id={name}
+							name={name}
+							value={state.value}
+							onBlur={handleBlur}
+							onChange={(e) => handleChange(e.target.value)}
+							placeholder="Enter listing title..."
+							disabled={isSubmitting}
+						/>
+						{state.meta.errors.length > 0 && state.meta.isTouched && (
+							<div className="mt-1 text-red-500 text-sm">
+								{state.meta.errors[0]?.message}
+							</div>
+						)}
+					</div>
+				)}
+			</form.Field>
 
-				<form.Field name="location">
-					{({ name, state, handleChange, handleBlur }) => (
-						<div>
-							<Label htmlFor={name}>Location</Label>
-							<Input
-								id={name}
-								name={name}
-								value={state.value}
-								onBlur={handleBlur}
-								onChange={(e) => handleChange(e.target.value)}
-								placeholder="Enter location..."
-								disabled={isSubmitting}
-							/>
-							{state.meta.errors.length > 0 && state.meta.isTouched && (
-								<div className="mt-1 text-red-500 text-sm">
-									{state.meta.errors[0]?.message}
-								</div>
-							)}
-						</div>
-					)}
-				</form.Field>
-			</div>
-
-			{/* Postcode Field with Lookup */}
-			<div className="grid gap-4 md:grid-cols-2">
+			{/* Postcode Field with Auto-filled Location Details */}
+			<div className="grid gap-4 md:grid-cols-3">
 				<form.Field name="postcode">
 					{({ name, state, handleChange, handleBlur }) => (
 						<div>
@@ -387,46 +363,82 @@ export function ListingForm({
 									{postcodeError.message}
 								</div>
 							)}
-							{isSuccess && postcodeData && (
-								<div className="mt-2 flex items-center gap-2 text-green-600 text-sm">
-									<MapPin className="h-4 w-4" />
-									<span>
-										{postcodeData.admin_district}, {postcodeData.region}
-									</span>
-								</div>
-							)}
 						</div>
 					)}
 				</form.Field>
 
 				<form.Field name="city">
-					{({ name, state, handleChange, handleBlur }) => (
+					{({ name, state }) => (
 						<div>
 							<Label htmlFor={name}>City</Label>
 							<Input
 								id={name}
 								name={name}
 								value={state.value}
-								onBlur={handleBlur}
-								onChange={(e) => handleChange(e.target.value)}
-								placeholder="City will be auto-filled from postcode"
-								disabled={isSubmitting}
-								className={postcodeData ? "border-green-200 bg-green-50" : ""}
+								placeholder="Auto-filled from postcode"
+								disabled={true}
+								className="cursor-not-allowed bg-muted text-muted-foreground"
 							/>
-							{state.meta.errors.length > 0 && state.meta.isTouched && (
-								<div className="mt-1 text-red-500 text-sm">
-									{state.meta.errors[0]?.message}
-								</div>
-							)}
 							{postcodeData && (
 								<div className="mt-1 text-green-600 text-sm">
-									Auto-filled from postcode lookup
+									Auto-filled: {postcodeData.admin_district}
+								</div>
+							)}
+						</div>
+					)}
+				</form.Field>
+
+				<form.Field name="location">
+					{({ name, state }) => (
+						<div>
+							<Label htmlFor={name}>Location</Label>
+							<Input
+								id={name}
+								name={name}
+								value={state.value}
+								placeholder="Auto-filled from postcode"
+								disabled={true}
+								className="cursor-not-allowed bg-muted text-muted-foreground"
+							/>
+							{postcodeData && (
+								<div className="mt-1 text-green-600 text-sm">
+									Auto-filled: {postcodeData.admin_ward}
 								</div>
 							)}
 						</div>
 					)}
 				</form.Field>
 			</div>
+
+			{/* Location Information Display */}
+			{isSuccess && postcodeData && (
+				<div className="rounded-lg border border-green-200 bg-green-50 p-4">
+					<div className="mb-2 flex items-center gap-2">
+						<MapPin className="h-4 w-4 text-green-600" />
+						<span className="font-medium text-green-800 text-sm">
+							Location Details
+						</span>
+					</div>
+					<div className="grid gap-2 text-green-700 text-sm">
+						<div className="flex justify-between">
+							<span>Postcode:</span>
+							<span className="font-medium">{postcodeData.postcode}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>City:</span>
+							<span className="font-medium">{postcodeData.admin_district}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>Location:</span>
+							<span className="font-medium">{postcodeData.admin_ward}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>Region:</span>
+							<span className="font-medium">{postcodeData.region}</span>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<form.Field name="description">
 				{({ name, state, handleChange, handleBlur }) => (
