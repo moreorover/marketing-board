@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { useEffect } from "react";
 import { ListingCard } from "@/components/listing-card";
 import Loader from "@/components/loader";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/listings/")({
@@ -27,10 +25,6 @@ export const Route = createFileRoute("/_authenticated/listings/")({
 });
 
 function ListingsRoute() {
-	const { data: session, isPending } = authClient.useSession();
-
-	const navigate = Route.useNavigate();
-
 	const listingsQuery = useQuery(trpc.listing.getMyListings.queryOptions());
 	const listings = listingsQuery.data;
 	const deleteMutation = useMutation(
@@ -40,14 +34,6 @@ function ListingsRoute() {
 			},
 		}),
 	);
-
-	useEffect(() => {
-		if (!session && !isPending) {
-			navigate({
-				to: "/login",
-			});
-		}
-	}, [session, isPending]);
 
 	const handleDeleteListing = (id: string) => {
 		deleteMutation.mutate({ id });

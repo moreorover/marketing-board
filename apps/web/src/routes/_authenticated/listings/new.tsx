@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { toast } from "sonner";
 import { ListingForm, type ListingFormData } from "@/components/ListingForm";
 import {
@@ -10,7 +9,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/listings/new")({
@@ -18,16 +16,7 @@ export const Route = createFileRoute("/_authenticated/listings/new")({
 });
 
 function NewListingRoute() {
-	const { data: session, isPending } = authClient.useSession();
 	const navigate = Route.useNavigate();
-
-	useEffect(() => {
-		if (!session && !isPending) {
-			navigate({
-				to: "/login",
-			})
-		}
-	}, [session, isPending]);
 
 	const createMutation = useMutation(
 		trpc.listing.create.mutationOptions({
@@ -39,7 +28,7 @@ function NewListingRoute() {
 				toast.error("Failed to create listing.");
 			},
 		}),
-	)
+	);
 
 	const handleSubmit = async ({
 		formData,
@@ -51,12 +40,12 @@ function NewListingRoute() {
 		await createMutation.mutateAsync({
 			...formData,
 			files: newFiles.length > 0 ? newFiles : undefined,
-		})
-	}
+		});
+	};
 
 	const handleCancel = () => {
 		navigate({ to: "/listings" });
-	}
+	};
 
 	return (
 		<div className="mx-auto w-full max-w-4xl py-10">
@@ -76,5 +65,5 @@ function NewListingRoute() {
 				</CardContent>
 			</Card>
 		</div>
-	)
+	);
 }

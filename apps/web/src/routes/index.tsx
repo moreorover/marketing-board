@@ -10,6 +10,7 @@ import { trpc } from "@/utils/trpc";
 export const Route = createFileRoute("/")({
 	loader: async ({ context: { trpc, queryClient } }) => {
 		await queryClient.ensureQueryData(trpc.listing.getPublic.queryOptions());
+		await queryClient.ensureQueryData(trpc.healthCheck.queryOptions());
 	},
 	pendingComponent: Loader,
 	component: HomeComponent,

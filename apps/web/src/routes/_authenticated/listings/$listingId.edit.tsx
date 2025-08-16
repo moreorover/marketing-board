@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouteContext } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { ListingForm, type ListingFormData } from "@/components/ListingForm";
@@ -11,12 +11,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute(
 	"/_authenticated/listings/$listingId/edit",
 )({
+	// TODO: beforeLoad: check if user owns $listingId
 	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getEditById.queryOptions({ listingId }),
@@ -27,8 +27,11 @@ export const Route = createFileRoute(
 });
 
 function EditListingRoute() {
+	const { auth } = useRouteContext({
+		from: "/_authenticated/listings/$listingId/edit",
+	});
 	const { listingId } = Route.useParams();
-	const { data: session, isPending: sessionPending } = authClient.useSession();
+
 	const navigate = Route.useNavigate();
 
 	const listingQuery = useQuery(
@@ -37,15 +40,15 @@ function EditListingRoute() {
 	const listing = listingQuery.data;
 
 	// Check if current user owns this listing
-	const isOwner = listing?.userId === session?.user.id;
+	const isOwner = listing?.userId === auth.user.id;
 
 	useEffect(() => {
-		if (!isOwner && !sessionPending) {
+		if (!isOwner) {
 			navigate({
 				to: "/",
 			});
 		}
-	}, [isOwner, sessionPending]);
+	}, [isOwner]);
 
 	const updateListingMutation = useMutation(
 		trpc.listing.update.mutationOptions({

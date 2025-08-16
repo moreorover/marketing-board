@@ -27,6 +27,7 @@ const navigation: NavigationItem[] = [
 		label: "Home",
 		icon: Home,
 		requiresAuth: false,
+		preload: "intent",
 	},
 	{
 		to: "/dashboard",
@@ -46,7 +47,7 @@ const navigation: NavigationItem[] = [
 		to: "/listings",
 		label: "Listings",
 		icon: Building2,
-		requiresAuth: false,
+		requiresAuth: true,
 		preload: false,
 	},
 ] as const;
