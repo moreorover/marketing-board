@@ -1,22 +1,22 @@
-import { useForm } from "@tanstack/react-form";
-import { Loader2, Star, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import {useForm} from "@tanstack/react-form";
+import {useQuery} from "@tanstack/react-query";
+import {CheckCircle, Loader2, MapPin, Star, Trash2, XCircle,} from "lucide-react";
+import {useEffect, useState} from "react";
 import z from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Dropzone,
-	DropzoneContent,
-	DropzoneEmptyState,
-} from "@/components/ui/shadcn-io/dropzone";
-import { Textarea } from "@/components/ui/textarea";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Dropzone, DropzoneContent, DropzoneEmptyState,} from "@/components/ui/shadcn-io/dropzone";
+import {Textarea} from "@/components/ui/textarea";
+import {trpc} from "@/utils/trpc";
 
 const FormSchema = z.object({
 	title: z.string().min(1),
 	description: z.string().min(1),
 	location: z.string().min(1),
 	phone: z.string().startsWith("+44").min(13).max(13),
+	city: z.string().min(1), // Added city field
+	postcode: z.string().min(1).max(10),
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -42,6 +42,49 @@ interface ListingFormProps {
 	mode: "create" | "edit";
 }
 
+// Custom hook for debounced postcode lookup
+function usePostcodeLookup() {
+	const [postcode, setPostcode] = useState("");
+	const [debouncedPostcode, setDebouncedPostcode] = useState("");
+	const [isValidating, setIsValidating] = useState(false);
+
+	// Debounce the postcode input
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setDebouncedPostcode(postcode);
+		}, 500); // 500ms delay
+
+		return () => clearTimeout(timer);
+	}, [postcode]);
+
+	// TRPC query for postcode lookup using queryOptions
+	const postcodeQuery = useQuery({
+		...trpc.postcodes.lookup.queryOptions({ postcode: debouncedPostcode }),
+		enabled: !!debouncedPostcode && debouncedPostcode.length >= 5,
+		retry: false,
+		refetchOnWindowFocus: false,
+	});
+
+	// Set validating state when debounced postcode changes
+	useEffect(() => {
+		if (debouncedPostcode && debouncedPostcode.length >= 5) {
+			setIsValidating(true);
+		} else {
+			setIsValidating(false);
+		}
+	}, [debouncedPostcode]);
+
+	return {
+		postcode,
+		setPostcode,
+		isValidating: isValidating && postcodeQuery.isFetching,
+		postcodeData: postcodeQuery.data,
+		postcodeError: postcodeQuery.error,
+		isSuccess: !!postcodeQuery.data && !postcodeQuery.error,
+		isError: !!postcodeQuery.error,
+	};
+}
+
 export function ListingForm({
 	initialData = {},
 	initialImages = [],
@@ -56,8 +99,21 @@ export function ListingForm({
 	const [newFiles, setNewFiles] = useState<File[]>([]);
 	const [newFileUrls, setNewFileUrls] = useState<string[]>([]);
 
+	// Postcode lookup hook
+	const {
+		postcode,
+		setPostcode,
+		isValidating,
+		postcodeData,
+		postcodeError,
+		isSuccess,
+		isError,
+	} = usePostcodeLookup();
+
 	// Filter out deleted images
-	const availableImages = initialImages.filter((img) => !deletedImages.has(img.url));
+	const availableImages = initialImages.filter(
+		(img) => !deletedImages.has(img.url),
+	);
 
 	// Set initial main image (first image is main)
 	useEffect(() => {
@@ -83,33 +139,41 @@ export function ListingForm({
 			description: initialData.description || "",
 			location: initialData.location || "",
 			phone: initialData.phone || "",
+			city: initialData.city || "",
+			postcode: initialData.postcode || "",
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
 			try {
 				// Convert new files to base64 data
-				let fileData: { name: string; type: string; data: string; main: boolean }[] = [];
+				let fileData: {
+					name: string;
+					type: string;
+					data: string;
+					main: boolean;
+				}[] = [];
 				if (newFiles.length > 0) {
 					fileData = await Promise.all(
 						newFiles.map(async (file, index) => {
 							const isMainFile = newFileUrls[index] === selectedMainImageUrl;
-							return new Promise<{ name: string; type: string; data: string; main: boolean }>(
-								(resolve) => {
-									const reader = new FileReader();
-									reader.onloadend = () => {
-										const base64String = (reader.result as string).split(
-											",",
-										)[1];
-										resolve({
-											name: file.name,
-											type: file.type,
-											data: base64String,
-											main: isMainFile,
-										});
-									};
-									reader.readAsDataURL(file);
-								},
-							);
+							return new Promise<{
+								name: string;
+								type: string;
+								data: string;
+								main: boolean;
+							}>((resolve) => {
+								const reader = new FileReader();
+								reader.onloadend = () => {
+									const base64String = (reader.result as string).split(",")[1];
+									resolve({
+										name: file.name,
+										type: file.type,
+										data: base64String,
+										main: isMainFile,
+									});
+								};
+								reader.readAsDataURL(file);
+							});
 						}),
 					);
 				}
@@ -170,6 +234,13 @@ export function ListingForm({
 			}
 		},
 	});
+
+	// Auto-update city field when postcode data is available
+	useEffect(() => {
+		if (postcodeData) {
+			form.setFieldValue("city", postcodeData.admin_district);
+		}
+	}, [postcodeData, form]);
 
 	const handleDeleteImage = (imageUrl: string) => {
 		// Add to local deleted images set
@@ -254,6 +325,75 @@ export function ListingForm({
 							{state.meta.errors.length > 0 && state.meta.isTouched && (
 								<div className="mt-1 text-red-500 text-sm">
 									{state.meta.errors[0]?.message}
+								</div>
+							)}
+						</div>
+					)}
+				</form.Field>
+			</div>
+
+			{/* Postcode Lookup Field */}
+			<div className="grid gap-4 md:grid-cols-2">
+				<div>
+					<Label htmlFor="postcode">Postcode</Label>
+					<div className="relative">
+						<Input
+							id="postcode"
+							value={postcode}
+							onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+							placeholder="Enter postcode (e.g., SW1A 1AA)"
+							disabled={isSubmitting}
+							className="pr-10"
+						/>
+						<div className="absolute inset-y-0 right-0 flex items-center pr-3">
+							{isValidating && (
+								<Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+							)}
+							{isSuccess && !isValidating && (
+								<CheckCircle className="h-4 w-4 text-green-500" />
+							)}
+							{isError && !isValidating && (
+								<XCircle className="h-4 w-4 text-red-500" />
+							)}
+						</div>
+					</div>
+					{isError && postcodeError && (
+						<div className="mt-1 text-red-500 text-sm">
+							{postcodeError.message}
+						</div>
+					)}
+					{isSuccess && postcodeData && (
+						<div className="mt-2 flex items-center gap-2 text-green-600 text-sm">
+							<MapPin className="h-4 w-4" />
+							<span>
+								{postcodeData.admin_district}, {postcodeData.region}
+							</span>
+						</div>
+					)}
+				</div>
+
+				<form.Field name="city">
+					{({ name, state, handleChange, handleBlur }) => (
+						<div>
+							<Label htmlFor={name}>City</Label>
+							<Input
+								id={name}
+								name={name}
+								value={state.value}
+								onBlur={handleBlur}
+								onChange={(e) => handleChange(e.target.value)}
+								placeholder="City will be auto-filled from postcode"
+								disabled
+								className={postcodeData ? "border-green-200 bg-green-50" : ""}
+							/>
+							{state.meta.errors.length > 0 && state.meta.isTouched && (
+								<div className="mt-1 text-red-500 text-sm">
+									{state.meta.errors[0]?.message}
+								</div>
+							)}
+							{postcodeData && (
+								<div className="mt-1 text-green-600 text-sm">
+									Auto-filled from postcode lookup
 								</div>
 							)}
 						</div>
@@ -431,9 +571,7 @@ export function ListingForm({
 
 									<div className="flex-1">
 										<div className="flex items-center gap-2">
-											<span className="font-medium text-sm">
-												{file.name}
-											</span>
+											<span className="font-medium text-sm">{file.name}</span>
 											{selectedMainImageUrl === fileUrl && (
 												<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
 													<Star className="h-3 w-3 fill-current" />
@@ -489,9 +627,7 @@ export function ListingForm({
 												// If deleted file was main image, select another
 												if (selectedMainImageUrl === fileUrl) {
 													if (availableImages.length > 0) {
-														setSelectedMainImageUrl(
-															availableImages[0].url,
-														);
+														setSelectedMainImageUrl(availableImages[0].url);
 													} else if (updatedUrls.length > 0) {
 														setSelectedMainImageUrl(updatedUrls[0]);
 													}
@@ -508,16 +644,16 @@ export function ListingForm({
 						})}
 					</div>
 					<p className="mt-3 text-gray-500 text-xs">
-						Click on an image or use the "Set as Main" button to select
-						the main image. Use the "Delete" button to remove images.
+						Click on an image or use the "Set as Main" button to select the main
+						image. Use the "Delete" button to remove images.
 					</p>
 				</div>
 			) : (
 				mode === "edit" && (
 					<div className="rounded-lg border border-gray-300 border-dashed bg-gray-50 p-6 text-center">
 						<p className="text-gray-500 text-sm">
-							This listing currently has no images. You can add images using
-							the upload area above.
+							This listing currently has no images. You can add images using the
+							upload area above.
 						</p>
 					</div>
 				)
@@ -537,10 +673,7 @@ export function ListingForm({
 					selector={(state) => [state.canSubmit, state.isSubmitting]}
 				>
 					{([canSubmit, isFormSubmitting]) => (
-						<Button
-							type="submit"
-							disabled={!canSubmit || isSubmitting}
-						>
+						<Button type="submit" disabled={!canSubmit || isSubmitting}>
 							{isSubmitting || isFormSubmitting ? (
 								<Loader2 className="h-4 w-4 animate-spin" />
 							) : (
