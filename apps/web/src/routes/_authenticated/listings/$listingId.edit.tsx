@@ -11,6 +11,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute(
@@ -27,9 +28,7 @@ export const Route = createFileRoute(
 });
 
 function EditListingRoute() {
-	const { auth } = useRouteContext({
-		from: "/_authenticated/listings/$listingId/edit",
-	});
+	const { user } = useAuth();
 	const { listingId } = Route.useParams();
 
 	const navigate = Route.useNavigate();
@@ -40,7 +39,7 @@ function EditListingRoute() {
 	const listing = listingQuery.data;
 
 	// Check if current user owns this listing
-	const isOwner = listing?.userId === auth.user.id;
+	const isOwner = listing?.userId === user.id;
 
 	useEffect(() => {
 		if (!isOwner) {

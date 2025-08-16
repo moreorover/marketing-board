@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -15,4 +15,9 @@ export const Route = createFileRoute("/_authenticated")({
 
 		return { auth: session.data };
 	},
+	component: AuthenticatedLayout,
 });
+
+function AuthenticatedLayout() {
+	return <Outlet />; // This renders the child routes
+}
