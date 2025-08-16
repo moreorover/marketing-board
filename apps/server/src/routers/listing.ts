@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import z from "zod";
 import { phoneView } from "@/db/schema/phone-view";
 import { db } from "../db";
@@ -20,7 +20,6 @@ export const listingRouter = router({
 			columns: {
 				id: true,
 				title: true,
-				description: true,
 				location: true,
 			},
 			with: {
@@ -35,9 +34,9 @@ export const listingRouter = router({
 		});
 
 		// Generate signed URLs for main images
-		const listingsWithSignedUrls = await Promise.all(
+		const listingsWithSignedUrl = await Promise.all(
 			listingsWithMainImage.map(async (listingItem) => {
-				let mainImageUrl = "";
+				let mainImageUrl: string | null = null;
 				if (listingItem.images[0]?.objectKey) {
 					mainImageUrl = await generateSignedImageUrl(
 						listingItem.images[0].objectKey,
@@ -47,27 +46,97 @@ export const listingRouter = router({
 				return {
 					id: listingItem.id,
 					title: listingItem.title,
-					description: listingItem.description,
 					location: listingItem.location,
-					images: mainImageUrl ? [{ url: mainImageUrl }] : [],
+					image: mainImageUrl,
 				};
 			}),
 		);
 
-		return listingsWithSignedUrls;
+		return listingsWithSignedUrl;
 	}),
 
-	getAll: protectedProcedure.query(async ({ ctx }) => {
-		return db
-			.select()
-			.from(listing)
-			.where(eq(listing.userId, ctx.session.user.id));
+	getMyListings: protectedProcedure.query(async ({ ctx }) => {
+		const listingsWithMainImage = await db.query.listing.findMany({
+			columns: {
+				id: true,
+				title: true,
+				location: true,
+			},
+			where: eq(listing.userId, ctx.session.user.id),
+			with: {
+				images: {
+					where: eq(listingImage.isMain, true),
+					columns: {
+						objectKey: true,
+					},
+					limit: 1,
+				},
+			},
+		});
+
+		// Generate signed URLs for main images
+		const listingsWithSignedUrl = await Promise.all(
+			listingsWithMainImage.map(async (listingItem) => {
+				let mainImageUrl: string | null = null;
+				if (listingItem.images[0]?.objectKey) {
+					mainImageUrl = await generateSignedImageUrl(
+						listingItem.images[0].objectKey,
+						3600,
+					);
+				}
+				return {
+					id: listingItem.id,
+					title: listingItem.title,
+					location: listingItem.location,
+					image: mainImageUrl,
+				};
+			}),
+		);
+
+		return listingsWithSignedUrl;
 	}),
+
+	getEditById: protectedProcedure
+		.input(z.object({ listingId: z.string() }))
+		.query(async ({ input, ctx }) => {
+			const listingResult = await db.query.listing.findFirst({
+				where: and(
+					eq(listing.id, input.listingId),
+					eq(listing.userId, ctx.session.user.id),
+				),
+				with: {
+					images: {},
+				},
+			});
+
+			if (!listingResult) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Listing not found.",
+					cause: "Incorrect ID.",
+				});
+			}
+
+			const imageKeys = listingResult.images.map((i) => ({
+				imageKey: i.objectKey,
+				isMain: i.isMain,
+			}));
+			const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
+
+			return {
+				...listingResult,
+				images: signedUrls.map((image) => ({
+					url: image.url,
+					isMain: image.isMain,
+				})),
+			};
+		}),
 
 	getById: publicProcedure
 		.input(z.object({ listingId: z.string() }))
 		.query(async ({ input }) => {
 			const listingResult = await db.query.listing.findFirst({
+				columns: { id: true, title: true, location: true, description: true },
 				where: eq(listing.id, input.listingId),
 				with: {
 					images: {},
@@ -82,15 +151,18 @@ export const listingRouter = router({
 				});
 			}
 
-			const listingItem = listingResult;
-			const imageKeys = listingResult.images.map((i) => i.objectKey);
+			const imageKeys = listingResult.images.map((i) => ({
+				imageKey: i.objectKey,
+				isMain: i.isMain,
+			}));
 			const signedUrls = await generateSignedImageUrls(imageKeys, 3600); // 1 hour expiry
 
 			return [
 				{
-					...listingItem,
-					images: imageKeys.map((key: string) => ({
-						url: signedUrls[key] || "",
+					...listingResult,
+					images: signedUrls.map((image) => ({
+						url: image.url,
+						isMain: image.isMain,
 					})),
 				},
 			];

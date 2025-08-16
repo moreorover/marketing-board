@@ -12,10 +12,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
-export const Route = createFileRoute("/listings/$listingId/")({
+export const Route = createFileRoute("/listings/$listingId")({
 	loader: async ({ context: { trpc, queryClient }, params: { listingId } }) => {
 		await queryClient.ensureQueryData(
 			trpc.listing.getById.queryOptions({ listingId }),
@@ -28,15 +27,11 @@ export const Route = createFileRoute("/listings/$listingId/")({
 function RouteComponent() {
 	const { listingId } = Route.useParams();
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
-	const { data: session } = authClient.useSession();
 
 	const listingQuery = useQuery(
 		trpc.listing.getById.queryOptions({ listingId }),
 	)
 	const listing = listingQuery.data?.[0];
-
-	// Check if current user owns this listing
-	const isOwner = session?.user?.id && listing?.userId === session.user.id;
 
 	if (!listing) {
 		return <Loader />;
@@ -62,15 +57,6 @@ function RouteComponent() {
 						Back to Listings
 					</Button>
 				</Link>
-				
-				{isOwner && (
-					<Link to="/listings/$listingId/edit" params={{ listingId }}>
-						<Button variant="outline" size="sm">
-							<Edit className="mr-2 h-4 w-4" />
-							Edit Listing
-						</Button>
-					</Link>
-				)}
 			</div>
 
 			<div className="grid gap-6 lg:grid-cols-2">
@@ -149,7 +135,7 @@ function RouteComponent() {
 				)}
 
 				{/* Listing Details */}
-				<div className={hasImages ? "space-y-6" : "lg:col-span-2 space-y-6"}>
+				<div className={hasImages ? "space-y-6" : "space-y-6 lg:col-span-2"}>
 					<Card>
 						<CardHeader>
 							<CardTitle className="text-2xl">{listing.title}</CardTitle>

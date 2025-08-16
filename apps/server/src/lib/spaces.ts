@@ -71,24 +71,36 @@ export async function generateSignedImageUrl(
 	return await getSignedUrl(spacesClient, command, { expiresIn });
 }
 
-// Generate signed URLs for multiple images
+/**
+ * Generate signed URLs for multiple images with metadata
+ * Skips images that fail to generate signed URLs
+ */
 export async function generateSignedImageUrls(
-	imageKeys: string[],
+	images: { imageKey: string; isMain: boolean }[],
 	expiresIn = 3600,
-): Promise<{ [key: string]: string }> {
-	const signedUrls: { [key: string]: string } = {};
-
+): Promise<{ imageKey: string; isMain: boolean; url: string }[]> {
+	const results: { imageKey: string; isMain: boolean; url: string }[] = [];
+	
 	await Promise.all(
-		imageKeys.map(async (key) => {
+		images.map(async (image) => {
 			try {
-				signedUrls[key] = await generateSignedImageUrl(key, expiresIn);
+				const url = await generateSignedImageUrl(image.imageKey, expiresIn);
+				results.push({
+					imageKey: image.imageKey,
+					isMain: image.isMain,
+					url,
+				});
 			} catch (error) {
-				console.error(`Failed to generate signed URL for ${key}:`, error);
+				console.error(
+					`Failed to generate signed URL for ${image.imageKey}:`,
+					error,
+				);
+				// Skip this image by not pushing to results
 			}
 		}),
 	);
 
-	return signedUrls;
+	return results;
 }
 
 /**
