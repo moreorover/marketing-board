@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
     depends_on:
-      - db
+      - postcodes-db
     environment:
       - POSTGRES_DATABASE=postcodesiodb
       - POSTGRES_PASSWORD=secret
