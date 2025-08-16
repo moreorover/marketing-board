@@ -15,8 +15,8 @@ const FormSchema = z.object({
 	description: z.string().min(1),
 	location: z.string().min(1),
 	phone: z.string().startsWith("+44").min(13).max(13),
-	city: z.string().min(1), // Added city field
-	postcode: z.string().min(1).max(10),
+	postcode: z.string().min(1, "Postcode is required"),
+	city: z.string().min(1),
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -110,6 +110,13 @@ export function ListingForm({
 		isError,
 	} = usePostcodeLookup();
 
+	// Sync lookup postcode with form field on initialization
+	useEffect(() => {
+		if (initialData.postcode) {
+			setPostcode(initialData.postcode);
+		}
+	}, [initialData.postcode]);
+
 	// Filter out deleted images
 	const availableImages = initialImages.filter(
 		(img) => !deletedImages.has(img.url),
@@ -139,8 +146,8 @@ export function ListingForm({
 			description: initialData.description || "",
 			location: initialData.location || "",
 			phone: initialData.phone || "",
-			city: initialData.city || "",
 			postcode: initialData.postcode || "",
+			city: initialData.city || "",
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
@@ -242,6 +249,11 @@ export function ListingForm({
 		}
 	}, [postcodeData, form]);
 
+	// Sync form postcode with lookup postcode
+	useEffect(() => {
+		form.setFieldValue("postcode", postcode);
+	}, [postcode, form]);
+
 	const handleDeleteImage = (imageUrl: string) => {
 		// Add to local deleted images set
 		setDeletedImages((prev) => new Set(prev.add(imageUrl)));
@@ -332,45 +344,60 @@ export function ListingForm({
 				</form.Field>
 			</div>
 
-			{/* Postcode Lookup Field */}
+			{/* Postcode Field with Lookup */}
 			<div className="grid gap-4 md:grid-cols-2">
-				<div>
-					<Label htmlFor="postcode">Postcode</Label>
-					<div className="relative">
-						<Input
-							id="postcode"
-							value={postcode}
-							onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-							placeholder="Enter postcode (e.g., SW1A 1AA)"
-							disabled={isSubmitting}
-							className="pr-10"
-						/>
-						<div className="absolute inset-y-0 right-0 flex items-center pr-3">
-							{isValidating && (
-								<Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+				<form.Field name="postcode">
+					{({ name, state, handleChange, handleBlur }) => (
+						<div>
+							<Label htmlFor={name}>Postcode</Label>
+							<div className="relative">
+								<Input
+									id={name}
+									name={name}
+									value={state.value}
+									onBlur={handleBlur}
+									onChange={(e) => {
+										const upperValue = e.target.value.toUpperCase();
+										handleChange(upperValue);
+										setPostcode(upperValue);
+									}}
+									placeholder="Enter postcode (e.g., SW1A 1AA)"
+									disabled={isSubmitting}
+									className="pr-10"
+								/>
+								<div className="absolute inset-y-0 right-0 flex items-center pr-3">
+									{isValidating && (
+										<Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+									)}
+									{isSuccess && !isValidating && (
+										<CheckCircle className="h-4 w-4 text-green-500" />
+									)}
+									{isError && !isValidating && (
+										<XCircle className="h-4 w-4 text-red-500" />
+									)}
+								</div>
+							</div>
+							{state.meta.errors.length > 0 && state.meta.isTouched && (
+								<div className="mt-1 text-red-500 text-sm">
+									{state.meta.errors[0]?.message}
+								</div>
 							)}
-							{isSuccess && !isValidating && (
-								<CheckCircle className="h-4 w-4 text-green-500" />
+							{isError && postcodeError && (
+								<div className="mt-1 text-red-500 text-sm">
+									{postcodeError.message}
+								</div>
 							)}
-							{isError && !isValidating && (
-								<XCircle className="h-4 w-4 text-red-500" />
+							{isSuccess && postcodeData && (
+								<div className="mt-2 flex items-center gap-2 text-green-600 text-sm">
+									<MapPin className="h-4 w-4" />
+									<span>
+										{postcodeData.admin_district}, {postcodeData.region}
+									</span>
+								</div>
 							)}
-						</div>
-					</div>
-					{isError && postcodeError && (
-						<div className="mt-1 text-red-500 text-sm">
-							{postcodeError.message}
 						</div>
 					)}
-					{isSuccess && postcodeData && (
-						<div className="mt-2 flex items-center gap-2 text-green-600 text-sm">
-							<MapPin className="h-4 w-4" />
-							<span>
-								{postcodeData.admin_district}, {postcodeData.region}
-							</span>
-						</div>
-					)}
-				</div>
+				</form.Field>
 
 				<form.Field name="city">
 					{({ name, state, handleChange, handleBlur }) => (
@@ -383,7 +410,7 @@ export function ListingForm({
 								onBlur={handleBlur}
 								onChange={(e) => handleChange(e.target.value)}
 								placeholder="City will be auto-filled from postcode"
-								disabled
+								disabled={isSubmitting}
 								className={postcodeData ? "border-green-200 bg-green-50" : ""}
 							/>
 							{state.meta.errors.length > 0 && state.meta.isTouched && (
