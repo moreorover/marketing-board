@@ -1,15 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { ListingForm, type ListingFormData } from "@/components/ListingForm";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {createFileRoute} from "@tanstack/react-router";
+import {toast} from "sonner";
+import {ListingForm, type ListingFormData} from "@/components/ListingForm";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/listings/new")({
 	component: NewListingRoute,
@@ -17,6 +11,11 @@ export const Route = createFileRoute("/_authenticated/listings/new")({
 
 function NewListingRoute() {
 	const navigate = Route.useNavigate();
+
+	const unusedPhotosQuery = useQuery(
+		trpc.listing.listUnusedPhotos.queryOptions(),
+	);
+	const unusedPhotos = unusedPhotosQuery.data;
 
 	const createMutation = useMutation(
 		trpc.listing.create.mutationOptions({
@@ -30,16 +29,9 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async ({
-		formData,
-		newFiles,
-	}: {
-		formData: ListingFormData;
-		newFiles: { name: string; type: string; data: string; main: boolean }[];
-	}) => {
+	const handleSubmit = async ({ formData }: { formData: ListingFormData }) => {
 		await createMutation.mutateAsync({
 			...formData,
-			files: newFiles.length > 0 ? newFiles : undefined,
 		});
 	};
 
@@ -56,7 +48,11 @@ function NewListingRoute() {
 				</CardHeader>
 				<CardContent>
 					<ListingForm
+						photos={unusedPhotos}
 						onSubmit={handleSubmit}
+						onUpload={() => {
+							unusedPhotosQuery.refetch();
+						}}
 						onCancel={handleCancel}
 						submitButtonText="Create Listing"
 						isSubmitting={createMutation.isPending}

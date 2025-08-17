@@ -1,5 +1,4 @@
 import {useMutation} from "@tanstack/react-query";
-import {useState} from "react";
 import {toast} from "sonner";
 import {Dropzone, DropzoneContent, DropzoneEmptyState,} from "@/components/ui/shadcn-io/dropzone";
 import {convertFilesToBase64} from "@/lib/utils";
@@ -8,11 +7,14 @@ import {trpc} from "@/utils/trpc";
 interface Props {
 	maxFiles: number;
 	onUpload: () => void;
+	disabled?: boolean;
 }
 
-export function PhotoDropzone({ maxFiles = 5, onUpload }: Props) {
-	const [files, setFiles] = useState<File[] | undefined>();
-
+export function PhotoDropzone({
+	maxFiles = 5,
+	onUpload,
+	disabled = false,
+}: Props) {
 	const uploadMutation = useMutation(
 		trpc.listing.uploadPhotos.mutationOptions({
 			onSuccess: (data) => {
@@ -26,10 +28,7 @@ export function PhotoDropzone({ maxFiles = 5, onUpload }: Props) {
 	);
 
 	const handleDrop = async (files: File[]) => {
-		console.log({ files });
-		setFiles(files);
 		const photos = await convertFilesToBase64(files);
-		console.log({ photos });
 		uploadMutation.mutate({ photos });
 	};
 
@@ -41,7 +40,7 @@ export function PhotoDropzone({ maxFiles = 5, onUpload }: Props) {
 			minSize={1024}
 			onDrop={handleDrop}
 			onError={console.error}
-			src={files}
+			disabled={disabled}
 		>
 			{" "}
 			<DropzoneEmptyState /> <DropzoneContent />{" "}

@@ -77,11 +77,7 @@ export const listingRouter = router({
 				),
 			);
 
-		if (existingUnusedPhotos.length === 0) {
-			return [];
-		}
-
-		return await Promise.all(
+		const result = await Promise.all(
 			existingUnusedPhotos.map(async (photo) => {
 				const signedUrl = await generateSignedImageUrl(photo.objectKey, 3600);
 				return {
@@ -90,6 +86,8 @@ export const listingRouter = router({
 				};
 			}),
 		);
+
+		return result;
 	}),
 
 	getPublic: publicProcedure.query(async () => {
