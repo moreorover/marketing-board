@@ -58,7 +58,6 @@ export function ListingForm({
 	isSubmitting = false,
 	mode,
 }: ListingFormProps) {
-	const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
 	const [mainPhotoId, setMainPhotoId] = useState<string | undefined>();
 
 	const form = useForm({
@@ -75,7 +74,6 @@ export function ListingForm({
 			// Call the onSubmit callback with all the data
 			await onSubmit({
 				formData: value,
-				photoIds: selectedPhotos.length > 0 ? selectedPhotos : undefined,
 				mainPhotoId,
 			});
 		},
@@ -269,19 +267,13 @@ export function ListingForm({
 											<span className="font-medium text-sm">
 												Photo {photo.id}
 											</span>
-											{isMain && (
-												<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
-													<Star className="h-3 w-3 fill-current" />
-													Main
-												</div>
-											)}
 										</div>
 									</div>
 
 									<div className="flex gap-2">
 										<Button
 											type="button"
-											variant="outline"
+											variant={isMain ? "default" : "outline"}
 											size="sm"
 											onClick={() => {
 												setMainPhotoId(photo.id);

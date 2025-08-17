@@ -291,8 +291,7 @@ export const listingRouter = router({
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				city: z.string().min(1),
 				postcode: z.string().min(1, "Postcode is required"),
-				photoIds: z.array(z.string()).optional(),
-				mainPhotoId: z.string().optional(),
+				mainPhotoId: z.string(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -312,35 +311,25 @@ export const listingRouter = router({
 
 			const listingId = createdListing[0].id;
 
-			// Update selected photos to be associated with this listing
-			if (input.photoIds && input.photoIds.length > 0) {
-				// Update photos to associate with the listing
-				for (const photoId of input.photoIds) {
-					await db
-						.update(listingPhoto)
-						.set({ listingId })
-						.where(
-							and(
-								eq(listingPhoto.id, photoId),
-								eq(listingPhoto.userId, ctx.session.user.id),
-								isNull(listingPhoto.listingId),
-							),
-						);
-				}
+			await db
+				.update(listingPhoto)
+				.set({ listingId })
+				.where(
+					and(
+						eq(listingPhoto.userId, ctx.session.user.id),
+						isNull(listingPhoto.listingId),
+					),
+				);
 
-				// Set main photo if specified
-				if (input.mainPhotoId) {
-					await db
-						.update(listingPhoto)
-						.set({ isMain: true })
-						.where(
-							and(
-								eq(listingPhoto.id, input.mainPhotoId),
-								eq(listingPhoto.listingId, listingId),
-							),
-						);
-				}
-			}
+			await db
+				.update(listingPhoto)
+				.set({ isMain: true })
+				.where(
+					and(
+						eq(listingPhoto.id, input.mainPhotoId),
+						eq(listingPhoto.listingId, listingId),
+					),
+				);
 
 			return createdListing;
 		}),
