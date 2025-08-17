@@ -1,8 +1,8 @@
 import { useForm } from "@tanstack/react-form";
-import { Loader2, Star, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import z from "zod";
-import { PhotoDropzone } from "@/components/PhotoDropzone";
+import { PhotoManager, type ListingPhoto } from "@/components/PhotoManager";
 import { PostcodeDrawer } from "@/components/PostcodeDrawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,15 +21,6 @@ const FormSchema = z.object({
 
 export type ListingFormData = z.infer<typeof FormSchema>;
 
-export type ListingPhoto = {
-	id: string;
-	userId: string | null;
-	listingId: string | null;
-	isMain: boolean;
-	objectKey: string;
-	uploadedAt: string;
-	signedUrl: string;
-};
 
 interface ListingFormProps {
 	photos: ListingPhoto[] | undefined;
@@ -71,7 +62,6 @@ export function ListingForm({
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
-			// Call the onSubmit callback with all the data
 			await onSubmit({
 				formData: value,
 				mainPhotoId,
@@ -235,78 +225,15 @@ export function ListingForm({
 				)}
 			</form.Field>
 
-			{/* Image Upload */}
-			<div>
-				<Label>{mode === "edit" ? "Add More Images" : "Images"}</Label>
-				<PhotoDropzone maxFiles={5} onUpload={onUpload} />
-			</div>
-
-			{/* Photo Management */}
-			{photos && photos.length > 0 && (
-				<div>
-					<Label className="font-medium text-sm">Manage Photos</Label>
-					<div className="mt-3 space-y-3">
-						{photos.map((photo) => {
-							const isMain = mainPhotoId === photo.id;
-
-							return (
-								<div
-									key={photo.id}
-									className="flex items-center gap-3 rounded-lg border p-3"
-								>
-									<div className="cursor-pointer rounded-lg border-2 p-2 transition-colors hover:border-gray-300">
-										<img
-											src={photo.signedUrl}
-											alt={`${photo.id}`}
-											className="h-20 w-20 rounded object-cover"
-										/>
-									</div>
-
-									<div className="flex-1">
-										<div className="flex items-center gap-2">
-											<span className="font-medium text-sm">
-												Photo {photo.id}
-											</span>
-										</div>
-									</div>
-
-									<div className="flex gap-2">
-										<Button
-											type="button"
-											variant={isMain ? "default" : "outline"}
-											size="sm"
-											onClick={() => {
-												setMainPhotoId(photo.id);
-											}}
-											disabled={isMain}
-										>
-											<Star className="mr-1 h-4 w-4" />
-											{isMain ? "Main" : "Set as Main"}
-										</Button>
-
-										<Button
-											type="button"
-											variant="destructive"
-											size="sm"
-											onClick={() => {
-												onPhotoDelete(photo.id);
-											}}
-											// disabled={true}
-										>
-											<Trash2 className="mr-1 h-4 w-4" />
-											Delete
-										</Button>
-									</div>
-								</div>
-							);
-						})}
-					</div>
-					<p className="mt-3 text-gray-500 text-xs">
-						Click on a photo to select it for your listing. Use "Set as Main" to
-						choose the primary photo.
-					</p>
-				</div>
-			)}
+			<PhotoManager
+				photos={photos}
+				onUpload={onUpload}
+				onPhotoDelete={onPhotoDelete}
+				onMainPhotoChange={setMainPhotoId}
+				mode={mode}
+				isSubmitting={isSubmitting}
+				mainPhotoId={mainPhotoId}
+			/>
 
 			{/* Form Actions */}
 			<div className="flex space-x-3">
