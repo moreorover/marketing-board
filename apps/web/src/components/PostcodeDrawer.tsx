@@ -29,6 +29,7 @@ export function PostcodeDrawer({
 	const [postcode, setPostcode] = useState(initialPostcode);
 	const [isOpen, setIsOpen] = useState(false);
 	const [locationData, setLocationData] = useState<{city: string; location: string} | null>(null);
+	const [isValid, setIsValid] = useState(false);
 
 	const handleLocationUpdate = useCallback((data: {city: string; location: string}) => {
 		setLocationData(data);
@@ -36,6 +37,10 @@ export function PostcodeDrawer({
 
 	const handlePostcodeChange = useCallback((newPostcode: string) => {
 		setPostcode(newPostcode);
+	}, []);
+
+	const handleValidationChange = useCallback((isValidPostcode: boolean) => {
+		setIsValid(isValidPostcode);
 	}, []);
 
 	const handleSubmit = useCallback(() => {
@@ -68,13 +73,14 @@ export function PostcodeDrawer({
 						initialPostcode={initialPostcode}
 						onPostcodeChange={handlePostcodeChange}
 						onLocationUpdate={handleLocationUpdate}
+						onValidationChange={handleValidationChange}
 						disabled={disabled}
 					/>
 				</div>
 				<DrawerFooter>
 					<Button 
 						onClick={handleSubmit} 
-						disabled={!locationData || !postcode}
+						disabled={!isValid || !locationData || !postcode}
 						className="w-full"
 					>
 						Use This Postcode

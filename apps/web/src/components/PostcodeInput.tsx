@@ -16,6 +16,7 @@ interface PostcodeInputProps {
 	initialPostcode?: string;
 	onPostcodeChange: (postcode: string) => void;
 	onLocationUpdate: (data: {city: string; location: string}) => void;
+	onValidationChange?: (isValid: boolean) => void;
 	disabled?: boolean;
 	error?: string;
 }
@@ -63,6 +64,7 @@ export function PostcodeInput({
 	initialPostcode = "",
 	onPostcodeChange,
 	onLocationUpdate,
+	onValidationChange,
 	disabled = false,
 	error,
 }: PostcodeInputProps) {
@@ -94,6 +96,12 @@ export function PostcodeInput({
 			});
 		}
 	}, [postcodeData, onLocationUpdate]);
+
+	useEffect(() => {
+		if (onValidationChange) {
+			onValidationChange(isSuccess);
+		}
+	}, [isSuccess, onValidationChange]);
 
 	return (
 		<>
