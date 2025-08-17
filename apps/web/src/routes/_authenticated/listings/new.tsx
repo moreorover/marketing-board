@@ -1,9 +1,15 @@
-import {useMutation, useQuery} from "@tanstack/react-query";
-import {createFileRoute} from "@tanstack/react-router";
-import {toast} from "sonner";
-import {ListingForm, type ListingFormData} from "@/components/ListingForm";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
-import {trpc} from "@/utils/trpc";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { ListingForm, type ListingFormData } from "@/components/ListingForm";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/listings/new")({
 	component: NewListingRoute,
@@ -29,11 +35,23 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async ({ 
-		formData, 
-		photoIds, 
-		mainPhotoId 
-	}: { 
+	const deleteListingPhotoMutation = useMutation(
+		trpc.listing.deletePhoto.mutationOptions({
+			onSuccess: () => {
+				toast.success("Listing photo deleted successfully!");
+				unusedPhotosQuery.refetch();
+			},
+			onError: () => {
+				toast.error("Failed to delete listing photo.");
+			},
+		}),
+	);
+
+	const handleSubmit = async ({
+		formData,
+		photoIds,
+		mainPhotoId,
+	}: {
 		formData: ListingFormData;
 		photoIds?: string[];
 		mainPhotoId?: string;
@@ -62,6 +80,9 @@ function NewListingRoute() {
 						onSubmit={handleSubmit}
 						onUpload={() => {
 							unusedPhotosQuery.refetch();
+						}}
+						onPhotoDelete={(listingPhotoId) => {
+							deleteListingPhotoMutation.mutate({ listingPhotoId });
 						}}
 						onCancel={handleCancel}
 						submitButtonText="Create Listing"

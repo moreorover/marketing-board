@@ -1,14 +1,14 @@
-import {useForm} from "@tanstack/react-form";
-import {Loader2, Star, Trash2} from "lucide-react";
-import {useCallback, useState} from "react";
+import { useForm } from "@tanstack/react-form";
+import { Loader2, Star, Trash2 } from "lucide-react";
+import { useCallback, useState } from "react";
 import z from "zod";
-import {PhotoDropzone} from "@/components/PhotoDropzone";
-import {PostcodeDrawer} from "@/components/PostcodeDrawer";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import {Textarea} from "@/components/ui/textarea";
-import {trpc} from "@/utils/trpc";
+import { PhotoDropzone } from "@/components/PhotoDropzone";
+import { PostcodeDrawer } from "@/components/PostcodeDrawer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/utils/trpc";
 
 const FormSchema = z.object({
 	title: z.string().min(1),
@@ -40,6 +40,7 @@ interface ListingFormProps {
 		mainPhotoId?: string;
 	}) => Promise<void>;
 	onUpload: () => void;
+	onPhotoDelete: (listingPhotoId: string) => void;
 	onCancel: () => void;
 	submitButtonText: string;
 	isSubmitting?: boolean;
@@ -51,6 +52,7 @@ export function ListingForm({
 	initialData = {},
 	onSubmit,
 	onUpload,
+	onPhotoDelete,
 	onCancel,
 	submitButtonText,
 	isSubmitting = false,
@@ -294,8 +296,10 @@ export function ListingForm({
 											type="button"
 											variant="destructive"
 											size="sm"
-											onClick={async () => {}}
-											disabled={true}
+											onClick={() => {
+												onPhotoDelete(photo.id);
+											}}
+											// disabled={true}
 										>
 											<Trash2 className="mr-1 h-4 w-4" />
 											Delete

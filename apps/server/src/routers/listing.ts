@@ -1,18 +1,18 @@
-import {TRPCError} from "@trpc/server";
-import {and, eq, isNull} from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { and, eq, isNull } from "drizzle-orm";
 import z from "zod";
-import {db} from "@/db";
-import {listing} from "@/db/schema/listing";
-import {type ListingPhoto, listingPhoto} from "@/db/schema/listing-photo";
-import {phoneView} from "@/db/schema/phone-view";
+import { db } from "@/db";
+import { listing } from "@/db/schema/listing";
+import { type ListingPhoto, listingPhoto } from "@/db/schema/listing-photo";
+import { phoneView } from "@/db/schema/phone-view";
 import {
-  deleteImage,
-  extractKeyFromUrl,
-  generateSignedImageUrl,
-  generateSignedImageUrls,
-  uploadImage,
+	deleteImage,
+	extractKeyFromUrl,
+	generateSignedImageUrl,
+	generateSignedImageUrls,
+	uploadImage,
 } from "@/lib/spaces";
-import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
+import { protectedProcedure, publicProcedure, router } from "@/lib/trpc";
 
 export const listingRouter = router({
 	uploadPhotos: protectedProcedure
@@ -91,12 +91,12 @@ export const listingRouter = router({
 	}),
 
 	deletePhoto: protectedProcedure
-		.input(z.object({ photoId: z.string() }))
+		.input(z.object({ listingPhotoId: z.string() }))
 		.mutation(async ({ ctx, input }) => {
 			// Verify the photo belongs to the user
 			const photo = await db.query.listingPhoto.findFirst({
 				where: and(
-					eq(listingPhoto.id, input.photoId),
+					eq(listingPhoto.id, input.listingPhotoId),
 					eq(listingPhoto.userId, ctx.session.user.id),
 				),
 			});
@@ -112,7 +112,9 @@ export const listingRouter = router({
 			await deleteImage(photo.objectKey);
 
 			// Delete from database
-			await db.delete(listingPhoto).where(eq(listingPhoto.id, input.photoId));
+			await db
+				.delete(listingPhoto)
+				.where(eq(listingPhoto.id, input.listingPhotoId));
 
 			return { success: true };
 		}),
@@ -322,7 +324,7 @@ export const listingRouter = router({
 								eq(listingPhoto.id, photoId),
 								eq(listingPhoto.userId, ctx.session.user.id),
 								isNull(listingPhoto.listingId),
-							)
+							),
 						);
 				}
 
@@ -335,7 +337,7 @@ export const listingRouter = router({
 							and(
 								eq(listingPhoto.id, input.mainPhotoId),
 								eq(listingPhoto.listingId, listingId),
-							)
+							),
 						);
 				}
 			}
