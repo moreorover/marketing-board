@@ -1,7 +1,7 @@
 import {relations} from "drizzle-orm";
 import {pgTable, text, uuid} from "drizzle-orm/pg-core";
 import {user} from "@/db/schema/auth";
-import {listingImage} from "./listing-image";
+import {listingPhoto} from "./listing-photo";
 
 export const listing = pgTable("listing", {
 	id: uuid("id").primaryKey().defaultRandom(),
@@ -16,8 +16,12 @@ export const listing = pgTable("listing", {
 		.references(() => user.id, { onDelete: "cascade" }),
 });
 
-export const listingRelations = relations(listing, ({ many }) => ({
-	images: many(listingImage),
+export const listingRelations = relations(listing, ({ many, one }) => ({
+	images: many(listingPhoto),
+	user: one(user, {
+		fields: [listing.userId],
+		references: [user.id],
+	}),
 }));
 
 export type Listing = typeof listing.$inferSelect;

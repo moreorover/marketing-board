@@ -2,10 +2,11 @@ import {useForm} from "@tanstack/react-form";
 import {Loader2, Star, Trash2} from "lucide-react";
 import {useCallback, useEffect, useState} from "react";
 import z from "zod";
+import {PostcodeDrawer} from "@/components/PostcodeDrawer";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {PostcodeDrawer} from "@/components/PostcodeDrawer";
+
 import {Dropzone, DropzoneContent, DropzoneEmptyState,} from "@/components/ui/shadcn-io/dropzone";
 import {Textarea} from "@/components/ui/textarea";
 
@@ -41,7 +42,6 @@ interface ListingFormProps {
 	mode: "create" | "edit";
 }
 
-
 export function ListingForm({
 	initialData = {},
 	initialImages = [],
@@ -55,7 +55,6 @@ export function ListingForm({
 	const [deletedImages, setDeletedImages] = useState<Set<string>>(new Set());
 	const [newFiles, setNewFiles] = useState<File[]>([]);
 	const [newFileUrls, setNewFileUrls] = useState<string[]>([]);
-
 
 	// Filter out deleted images
 	const availableImages = initialImages.filter(
@@ -182,15 +181,21 @@ export function ListingForm({
 		},
 	});
 
-	const handlePostcodeChange = useCallback((postcode: string) => {
-		form.setFieldValue("postcode", postcode);
-	}, [form]);
+	const handlePostcodeChange = useCallback(
+		(postcode: string) => {
+			form.setFieldValue("postcode", postcode);
+		},
+		[form],
+	);
 
-	const handleLocationUpdate = useCallback((data: {city: string; location: string; postcode: string}) => {
-		form.setFieldValue("city", data.city);
-		form.setFieldValue("location", data.location);
-		form.setFieldValue("postcode", data.postcode);
-	}, [form]);
+	const handleLocationUpdate = useCallback(
+		(data: { city: string; location: string; postcode: string }) => {
+			form.setFieldValue("city", data.city);
+			form.setFieldValue("location", data.location);
+			form.setFieldValue("postcode", data.postcode);
+		},
+		[form],
+	);
 
 	const handleDeleteImage = (imageUrl: string) => {
 		// Add to local deleted images set
@@ -320,7 +325,6 @@ export function ListingForm({
 					)}
 				</form.Field>
 			</div>
-
 
 			<form.Field name="description">
 				{({ name, state, handleChange, handleBlur }) => (

@@ -1,20 +1,97 @@
 import {TRPCError} from "@trpc/server";
-import {and, eq} from "drizzle-orm";
+import {and, eq, isNull} from "drizzle-orm";
 import z from "zod";
+import {db} from "@/db";
+import {listing} from "@/db/schema/listing";
+import {type ListingPhoto, listingPhoto} from "@/db/schema/listing-photo";
 import {phoneView} from "@/db/schema/phone-view";
-import {db} from "../db";
-import {listing} from "../db/schema/listing";
-import {listingImage} from "../db/schema/listing-image";
 import {
   deleteImage,
   extractKeyFromUrl,
   generateSignedImageUrl,
   generateSignedImageUrls,
   uploadImage,
-} from "../lib/spaces";
-import {protectedProcedure, publicProcedure, router} from "../lib/trpc";
+} from "@/lib/spaces";
+import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
 
 export const listingRouter = router({
+	uploadPhotos: protectedProcedure
+		.input(
+			z.object({
+				photos: z.array(
+					z.object({
+						name: z.string(),
+						type: z.string(),
+						data: z.string(),
+					}),
+				),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			const existingUnusedPhotos = await db
+				.select()
+				.from(listingPhoto)
+				.where(
+					and(
+						eq(listingPhoto.userId, ctx.session.user.id),
+						isNull(listingPhoto.listingId),
+					),
+				);
+
+			if (existingUnusedPhotos.length >= 5) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Already 5 photos uploaded.",
+					cause: "Up to 5 photos allowed.",
+				});
+			}
+
+			const savedListingPhotos: ListingPhoto[] = [];
+
+			for (const photo of input.photos) {
+				const buffer = Buffer.from(photo.data, "base64");
+				const objectKey = await uploadImage(buffer, ctx.session.user.id);
+
+				const savedListingPhoto = await db
+					.insert(listingPhoto)
+					.values({
+						objectKey: objectKey,
+						userId: ctx.session.user.id,
+					})
+					.returning();
+
+				savedListingPhotos.push(savedListingPhoto[0]);
+			}
+
+			return savedListingPhotos;
+		}),
+
+	listUnusedPhotos: protectedProcedure.query(async ({ ctx }) => {
+		const existingUnusedPhotos: ListingPhoto[] = await db
+			.select()
+			.from(listingPhoto)
+			.where(
+				and(
+					eq(listingPhoto.userId, ctx.session.user.id),
+					isNull(listingPhoto.listingId),
+				),
+			);
+
+		if (existingUnusedPhotos.length === 0) {
+			return [];
+		}
+
+		return await Promise.all(
+			existingUnusedPhotos.map(async (photo) => {
+				const signedUrl = await generateSignedImageUrl(photo.objectKey, 3600);
+				return {
+					...photo,
+					signedUrl,
+				};
+			}),
+		);
+	}),
+
 	getPublic: publicProcedure.query(async () => {
 		const listingsWithMainImage = await db.query.listing.findMany({
 			columns: {
@@ -25,7 +102,7 @@ export const listingRouter = router({
 			},
 			with: {
 				images: {
-					where: eq(listingImage.isMain, true),
+					where: eq(listingPhoto.isMain, true),
 					columns: {
 						objectKey: true,
 					},
@@ -68,7 +145,7 @@ export const listingRouter = router({
 			where: eq(listing.userId, ctx.session.user.id),
 			with: {
 				images: {
-					where: eq(listingImage.isMain, true),
+					where: eq(listingPhoto.isMain, true),
 					columns: {
 						objectKey: true,
 					},
@@ -187,13 +264,11 @@ export const listingRouter = router({
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				city: z.string().min(1),
 				postcode: z.string().min(1, "Postcode is required"),
-				files: z
+				photoKeys: z
 					.array(
 						z.object({
-							name: z.string(),
-							type: z.string(),
-							data: z.string(),
-							main: z.boolean().default(false),
+							objectKey: z.string(),
+							isMain: z.boolean().default(false),
 						}),
 					)
 					.optional(),
@@ -216,19 +291,13 @@ export const listingRouter = router({
 
 			const listingId = createdListing[0].id;
 
-			// Upload images and save to database
-			if (input.files && input.files.length > 0) {
-				for (const file of input.files) {
-					const buffer = Buffer.from(file.data, "base64");
-
-					// Upload to S3 and get object key
-					const objectKey = await uploadImage(buffer, listingId);
-
-					// Save image metadata to database
-					await db.insert(listingImage).values({
+			// Save photo metadata to database using provided keys
+			if (input.photoKeys && input.photoKeys.length > 0) {
+				for (const photo of input.photoKeys) {
+					await db.insert(listingPhoto).values({
 						listingId,
-						objectKey,
-						isMain: file.main,
+						objectKey: photo.objectKey,
+						isMain: photo.isMain,
 					});
 				}
 			}
@@ -278,8 +347,8 @@ export const listingRouter = router({
 			}
 
 			// Get current images from database
-			const currentImages = await db.query.listingImage.findMany({
-				where: eq(listingImage.listingId, input.id),
+			const currentImages = await db.query.listingPhoto.findMany({
+				where: eq(listingPhoto.listingId, input.id),
 			});
 
 			// Convert keepImages URLs to keys if needed
@@ -291,7 +360,7 @@ export const listingRouter = router({
 			// Delete images from both S3 and database
 			for (const image of imagesToDelete) {
 				await deleteImage(image.objectKey);
-				await db.delete(listingImage).where(eq(listingImage.id, image.id));
+				await db.delete(listingPhoto).where(eq(listingPhoto.id, image.id));
 			}
 
 			// Upload new images if provided
@@ -299,10 +368,10 @@ export const listingRouter = router({
 			if (input.newFiles && input.newFiles.length > 0) {
 				for (const file of input.newFiles) {
 					const buffer = Buffer.from(file.data, "base64");
-					const objectKey = await uploadImage(buffer, input.id);
+					const objectKey = await uploadImage(buffer, ctx.session.user.id);
 
 					// Save to database
-					await db.insert(listingImage).values({
+					await db.insert(listingPhoto).values({
 						listingId: input.id,
 						objectKey,
 						isMain: false,
@@ -318,9 +387,9 @@ export const listingRouter = router({
 
 				// Clear current main image flag
 				await db
-					.update(listingImage)
+					.update(listingPhoto)
 					.set({ isMain: false })
-					.where(eq(listingImage.listingId, input.id));
+					.where(eq(listingPhoto.listingId, input.id));
 
 				// Set new main image
 				if (
@@ -331,16 +400,16 @@ export const listingRouter = router({
 					const selectedKey = newImageKeys[input.mainImageNewFileIndex];
 					if (selectedKey) {
 						await db
-							.update(listingImage)
+							.update(listingPhoto)
 							.set({ isMain: true })
-							.where(eq(listingImage.objectKey, selectedKey));
+							.where(eq(listingPhoto.objectKey, selectedKey));
 					}
 				} else {
 					// Existing image selected as main
 					await db
-						.update(listingImage)
+						.update(listingPhoto)
 						.set({ isMain: true })
-						.where(eq(listingImage.objectKey, newMainImageKey));
+						.where(eq(listingPhoto.objectKey, newMainImageKey));
 				}
 			}
 
