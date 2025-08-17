@@ -1,6 +1,6 @@
 import {useForm} from "@tanstack/react-form";
-import {Loader2} from "lucide-react";
-import {useCallback} from "react";
+import {Loader2, Star, Trash2} from "lucide-react";
+import {useCallback, useState} from "react";
 import z from "zod";
 import {PhotoDropzone} from "@/components/PhotoDropzone";
 import {PostcodeDrawer} from "@/components/PostcodeDrawer";
@@ -8,6 +8,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
+import {trpc} from "@/utils/trpc";
 
 const FormSchema = z.object({
 	title: z.string().min(1),
@@ -33,7 +34,11 @@ export type ListingPhoto = {
 interface ListingFormProps {
 	photos: ListingPhoto[] | undefined;
 	initialData?: Partial<ListingFormData>;
-	onSubmit: (formData: ListingFormData) => Promise<void>;
+	onSubmit: (data: {
+		formData: ListingFormData;
+		photoIds?: string[];
+		mainPhotoId?: string;
+	}) => Promise<void>;
 	onUpload: () => void;
 	onCancel: () => void;
 	submitButtonText: string;
@@ -42,6 +47,7 @@ interface ListingFormProps {
 }
 
 export function ListingForm({
+	photos,
 	initialData = {},
 	onSubmit,
 	onUpload,
@@ -50,6 +56,9 @@ export function ListingForm({
 	isSubmitting = false,
 	mode,
 }: ListingFormProps) {
+	const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
+	const [mainPhotoId, setMainPhotoId] = useState<string | undefined>();
+
 	const form = useForm({
 		defaultValues: {
 			title: initialData.title || "",
@@ -62,7 +71,11 @@ export function ListingForm({
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
 			// Call the onSubmit callback with all the data
-			await onSubmit(value);
+			await onSubmit({
+				formData: value,
+				photoIds: selectedPhotos.length > 0 ? selectedPhotos : undefined,
+				mainPhotoId,
+			});
 		},
 	});
 
@@ -228,9 +241,76 @@ export function ListingForm({
 				<PhotoDropzone maxFiles={5} onUpload={onUpload} />
 			</div>
 
-			<div>
-				{/* implement here a logic to render images in a column and have following buttons for each image: "Select as main", "Delete" */}
-			</div>
+			{/* Photo Management */}
+			{photos && photos.length > 0 && (
+				<div>
+					<Label className="font-medium text-sm">Manage Photos</Label>
+					<div className="mt-3 space-y-3">
+						{photos.map((photo) => {
+							const isMain = mainPhotoId === photo.id;
+
+							return (
+								<div
+									key={photo.id}
+									className="flex items-center gap-3 rounded-lg border p-3"
+								>
+									<div className="cursor-pointer rounded-lg border-2 p-2 transition-colors hover:border-gray-300">
+										<img
+											src={photo.signedUrl}
+											alt={`${photo.id}`}
+											className="h-20 w-20 rounded object-cover"
+										/>
+									</div>
+
+									<div className="flex-1">
+										<div className="flex items-center gap-2">
+											<span className="font-medium text-sm">
+												Photo {photo.id}
+											</span>
+											{isMain && (
+												<div className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-blue-700 text-xs">
+													<Star className="h-3 w-3 fill-current" />
+													Main
+												</div>
+											)}
+										</div>
+									</div>
+
+									<div className="flex gap-2">
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => {
+												setMainPhotoId(photo.id);
+											}}
+											disabled={isMain}
+										>
+											<Star className="mr-1 h-4 w-4" />
+											{isMain ? "Main" : "Set as Main"}
+										</Button>
+
+										<Button
+											type="button"
+											variant="destructive"
+											size="sm"
+											onClick={async () => {}}
+											disabled={true}
+										>
+											<Trash2 className="mr-1 h-4 w-4" />
+											Delete
+										</Button>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+					<p className="mt-3 text-gray-500 text-xs">
+						Click on a photo to select it for your listing. Use "Set as Main" to
+						choose the primary photo.
+					</p>
+				</div>
+			)}
 
 			{/* Form Actions */}
 			<div className="flex space-x-3">

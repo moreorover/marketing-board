@@ -29,9 +29,19 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async ({ formData }: { formData: ListingFormData }) => {
+	const handleSubmit = async ({ 
+		formData, 
+		photoIds, 
+		mainPhotoId 
+	}: { 
+		formData: ListingFormData;
+		photoIds?: string[];
+		mainPhotoId?: string;
+	}) => {
 		await createMutation.mutateAsync({
 			...formData,
+			photoIds,
+			mainPhotoId,
 		});
 	};
 

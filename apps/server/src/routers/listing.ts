@@ -90,6 +90,33 @@ export const listingRouter = router({
 		return result;
 	}),
 
+	deletePhoto: protectedProcedure
+		.input(z.object({ photoId: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			// Verify the photo belongs to the user
+			const photo = await db.query.listingPhoto.findFirst({
+				where: and(
+					eq(listingPhoto.id, input.photoId),
+					eq(listingPhoto.userId, ctx.session.user.id),
+				),
+			});
+
+			if (!photo) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Photo not found.",
+				});
+			}
+
+			// Delete from R2
+			await deleteImage(photo.objectKey);
+
+			// Delete from database
+			await db.delete(listingPhoto).where(eq(listingPhoto.id, input.photoId));
+
+			return { success: true };
+		}),
+
 	getPublic: publicProcedure.query(async () => {
 		const listingsWithMainImage = await db.query.listing.findMany({
 			columns: {
@@ -262,14 +289,8 @@ export const listingRouter = router({
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				city: z.string().min(1),
 				postcode: z.string().min(1, "Postcode is required"),
-				photoKeys: z
-					.array(
-						z.object({
-							objectKey: z.string(),
-							isMain: z.boolean().default(false),
-						}),
-					)
-					.optional(),
+				photoIds: z.array(z.string()).optional(),
+				mainPhotoId: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -289,14 +310,33 @@ export const listingRouter = router({
 
 			const listingId = createdListing[0].id;
 
-			// Save photo metadata to database using provided keys
-			if (input.photoKeys && input.photoKeys.length > 0) {
-				for (const photo of input.photoKeys) {
-					await db.insert(listingPhoto).values({
-						listingId,
-						objectKey: photo.objectKey,
-						isMain: photo.isMain,
-					});
+			// Update selected photos to be associated with this listing
+			if (input.photoIds && input.photoIds.length > 0) {
+				// Update photos to associate with the listing
+				for (const photoId of input.photoIds) {
+					await db
+						.update(listingPhoto)
+						.set({ listingId })
+						.where(
+							and(
+								eq(listingPhoto.id, photoId),
+								eq(listingPhoto.userId, ctx.session.user.id),
+								isNull(listingPhoto.listingId),
+							)
+						);
+				}
+
+				// Set main photo if specified
+				if (input.mainPhotoId) {
+					await db
+						.update(listingPhoto)
+						.set({ isMain: true })
+						.where(
+							and(
+								eq(listingPhoto.id, input.mainPhotoId),
+								eq(listingPhoto.listingId, listingId),
+							)
+						);
 				}
 			}
 
