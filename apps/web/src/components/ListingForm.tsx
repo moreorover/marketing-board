@@ -1,14 +1,13 @@
 import {useForm} from "@tanstack/react-form";
-import {useQuery} from "@tanstack/react-query";
-import {CheckCircle, Loader2, MapPin, Star, Trash2, XCircle,} from "lucide-react";
-import {useEffect, useState} from "react";
+import {Loader2, Star, Trash2} from "lucide-react";
+import {useCallback, useEffect, useState} from "react";
 import z from "zod";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
+import {PostcodeDrawer} from "@/components/PostcodeDrawer";
 import {Dropzone, DropzoneContent, DropzoneEmptyState,} from "@/components/ui/shadcn-io/dropzone";
 import {Textarea} from "@/components/ui/textarea";
-import {trpc} from "@/utils/trpc";
 
 const FormSchema = z.object({
 	title: z.string().min(1),
@@ -42,48 +41,6 @@ interface ListingFormProps {
 	mode: "create" | "edit";
 }
 
-// Custom hook for debounced postcode lookup
-function usePostcodeLookup() {
-	const [postcode, setPostcode] = useState("");
-	const [debouncedPostcode, setDebouncedPostcode] = useState("");
-	const [isValidating, setIsValidating] = useState(false);
-
-	// Debounce the postcode input
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setDebouncedPostcode(postcode);
-		}, 500); // 500ms delay
-
-		return () => clearTimeout(timer);
-	}, [postcode]);
-
-	// TRPC query for postcode lookup using queryOptions
-	const postcodeQuery = useQuery({
-		...trpc.postcodes.lookup.queryOptions({ postcode: debouncedPostcode }),
-		enabled: !!debouncedPostcode && debouncedPostcode.length >= 5,
-		retry: false,
-		refetchOnWindowFocus: false,
-	});
-
-	// Set validating state when debounced postcode changes
-	useEffect(() => {
-		if (debouncedPostcode && debouncedPostcode.length >= 5) {
-			setIsValidating(true);
-		} else {
-			setIsValidating(false);
-		}
-	}, [debouncedPostcode]);
-
-	return {
-		postcode,
-		setPostcode,
-		isValidating: isValidating && postcodeQuery.isFetching,
-		postcodeData: postcodeQuery.data,
-		postcodeError: postcodeQuery.error,
-		isSuccess: !!postcodeQuery.data && !postcodeQuery.error,
-		isError: !!postcodeQuery.error,
-	};
-}
 
 export function ListingForm({
 	initialData = {},
@@ -99,23 +56,6 @@ export function ListingForm({
 	const [newFiles, setNewFiles] = useState<File[]>([]);
 	const [newFileUrls, setNewFileUrls] = useState<string[]>([]);
 
-	// Postcode lookup hook
-	const {
-		postcode,
-		setPostcode,
-		isValidating,
-		postcodeData,
-		postcodeError,
-		isSuccess,
-		isError,
-	} = usePostcodeLookup();
-
-	// Sync lookup postcode with form field on initialization
-	useEffect(() => {
-		if (initialData.postcode) {
-			setPostcode(initialData.postcode);
-		}
-	}, [initialData.postcode]);
 
 	// Filter out deleted images
 	const availableImages = initialImages.filter(
@@ -242,18 +182,15 @@ export function ListingForm({
 		},
 	});
 
-	// Auto-update city and location fields when postcode data is available
-	useEffect(() => {
-		if (postcodeData) {
-			form.setFieldValue("city", postcodeData.admin_district);
-			form.setFieldValue("location", postcodeData.admin_ward);
-		}
-	}, [postcodeData, form]);
-
-	// Sync form postcode with lookup postcode
-	useEffect(() => {
+	const handlePostcodeChange = useCallback((postcode: string) => {
 		form.setFieldValue("postcode", postcode);
-	}, [postcode, form]);
+	}, [form]);
+
+	const handleLocationUpdate = useCallback((data: {city: string; location: string; postcode: string}) => {
+		form.setFieldValue("city", data.city);
+		form.setFieldValue("location", data.location);
+		form.setFieldValue("postcode", data.postcode);
+	}, [form]);
 
 	const handleDeleteImage = (imageUrl: string) => {
 		// Add to local deleted images set
@@ -323,44 +260,18 @@ export function ListingForm({
 			{/* Postcode Field with Auto-filled Location Details */}
 			<div className="grid gap-4 md:grid-cols-3">
 				<form.Field name="postcode">
-					{({ name, state, handleChange, handleBlur }) => (
+					{({ state }) => (
 						<div>
-							<Label htmlFor={name}>Postcode</Label>
-							<div className="relative">
-								<Input
-									id={name}
-									name={name}
-									value={state.value}
-									onBlur={handleBlur}
-									onChange={(e) => {
-										const upperValue = e.target.value.toUpperCase();
-										handleChange(upperValue);
-										setPostcode(upperValue);
-									}}
-									placeholder="Enter postcode (e.g., SW1A 1AA)"
-									disabled={isSubmitting}
-									className="pr-10"
-								/>
-								<div className="absolute inset-y-0 right-0 flex items-center pr-3">
-									{isValidating && (
-										<Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-									)}
-									{isSuccess && !isValidating && (
-										<CheckCircle className="h-4 w-4 text-green-500" />
-									)}
-									{isError && !isValidating && (
-										<XCircle className="h-4 w-4 text-red-500" />
-									)}
-								</div>
-							</div>
+							<Label>Postcode</Label>
+							<PostcodeDrawer
+								initialPostcode={initialData.postcode}
+								onLocationUpdate={handleLocationUpdate}
+								disabled={isSubmitting}
+								triggerText={state.value || "Enter Postcode"}
+							/>
 							{state.meta.errors.length > 0 && state.meta.isTouched && (
 								<div className="mt-1 text-red-500 text-sm">
 									{state.meta.errors[0]?.message}
-								</div>
-							)}
-							{isError && postcodeError && (
-								<div className="mt-1 text-red-500 text-sm">
-									{postcodeError.message}
 								</div>
 							)}
 						</div>
@@ -379,9 +290,9 @@ export function ListingForm({
 								disabled={true}
 								className="cursor-not-allowed bg-muted text-muted-foreground"
 							/>
-							{postcodeData && (
+							{state.value && (
 								<div className="mt-1 text-green-600 text-sm">
-									Auto-filled: {postcodeData.admin_district}
+									Auto-filled: {state.value}
 								</div>
 							)}
 						</div>
@@ -400,9 +311,9 @@ export function ListingForm({
 								disabled={true}
 								className="cursor-not-allowed bg-muted text-muted-foreground"
 							/>
-							{postcodeData && (
+							{state.value && (
 								<div className="mt-1 text-green-600 text-sm">
-									Auto-filled: {postcodeData.admin_ward}
+									Auto-filled: {state.value}
 								</div>
 							)}
 						</div>
@@ -410,35 +321,6 @@ export function ListingForm({
 				</form.Field>
 			</div>
 
-			{/* Location Information Display */}
-			{isSuccess && postcodeData && (
-				<div className="rounded-lg border border-green-200 bg-green-50 p-4">
-					<div className="mb-2 flex items-center gap-2">
-						<MapPin className="h-4 w-4 text-green-600" />
-						<span className="font-medium text-green-800 text-sm">
-							Location Details
-						</span>
-					</div>
-					<div className="grid gap-2 text-green-700 text-sm">
-						<div className="flex justify-between">
-							<span>Postcode:</span>
-							<span className="font-medium">{postcodeData.postcode}</span>
-						</div>
-						<div className="flex justify-between">
-							<span>City:</span>
-							<span className="font-medium">{postcodeData.admin_district}</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Location:</span>
-							<span className="font-medium">{postcodeData.admin_ward}</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Region:</span>
-							<span className="font-medium">{postcodeData.region}</span>
-						</div>
-					</div>
-				</div>
-			)}
 
 			<form.Field name="description">
 				{({ name, state, handleChange, handleBlur }) => (
