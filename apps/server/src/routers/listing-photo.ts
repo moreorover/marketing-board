@@ -63,29 +63,32 @@ export const listingPhotoRouter = router({
 			return savedListingPhotos;
 		}),
 
-	listUnusedPhotos: protectedProcedure.query(async ({ ctx }) => {
-		const existingUnusedPhotos: ListingPhoto[] = await db
-			.select()
-			.from(listingPhoto)
-			.where(
-				and(
-					eq(listingPhoto.userId, ctx.session.user.id),
-					isNull(listingPhoto.listingId),
-				),
+	listPhotos: protectedProcedure
+		.input(z.object({ listingId: z.string().nullable() }))
+		.query(async ({ ctx, input }) => {
+			const whereCondition = input.listingId
+				? eq(listingPhoto.listingId, input.listingId)
+				: isNull(listingPhoto.listingId);
+
+			const existingPhotos: ListingPhoto[] = await db
+				.select()
+				.from(listingPhoto)
+				.where(
+					and(eq(listingPhoto.userId, ctx.session.user.id), whereCondition),
+				);
+
+			const result = await Promise.all(
+				existingPhotos.map(async (photo) => {
+					const signedUrl = await generateSignedImageUrl(photo.objectKey, 3600);
+					return {
+						...photo,
+						signedUrl,
+					};
+				}),
 			);
 
-		const result = await Promise.all(
-			existingUnusedPhotos.map(async (photo) => {
-				const signedUrl = await generateSignedImageUrl(photo.objectKey, 3600);
-				return {
-					...photo,
-					signedUrl,
-				};
-			}),
-		);
-
-		return result;
-	}),
+			return result;
+		}),
 
 	deletePhoto: protectedProcedure
 		.input(z.object({ listingPhotoId: z.string() }))

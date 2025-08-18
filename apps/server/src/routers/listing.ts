@@ -5,13 +5,7 @@ import {db} from "@/db";
 import {listing} from "@/db/schema/listing";
 import {listingPhoto} from "@/db/schema/listing-photo";
 import {phoneView} from "@/db/schema/phone-view";
-import {
-  deleteImage,
-  extractKeyFromUrl,
-  generateSignedImageUrl,
-  generateSignedImageUrls,
-  uploadImage,
-} from "@/lib/spaces";
+import {generateSignedImageUrl, generateSignedImageUrls,} from "@/lib/spaces";
 import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
 
 export const listingRouter = router({
@@ -226,22 +220,9 @@ export const listingRouter = router({
 				title: z.string().min(1),
 				description: z.string().min(1),
 				location: z.string().min(1),
-				city: z.string().min(1),
-				postcode: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
-				keepImages: z.array(z.string()).optional(),
-				newMainImageUrl: z.string().optional(),
-				mainImageIsNewFile: z.boolean().optional(),
-				mainImageNewFileIndex: z.number().int().min(0).optional(),
-				newFiles: z
-					.array(
-						z.object({
-							name: z.string(),
-							type: z.string(),
-							data: z.string(),
-						}),
-					)
-					.optional(),
+				city: z.string().min(1),
+				postcode: z.string().min(1, "Postcode is required"),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -249,82 +230,19 @@ export const listingRouter = router({
 			const listingResult = await db
 				.select({ userId: listing.userId })
 				.from(listing)
-				.where(eq(listing.id, input.id))
+				.where(
+					and(
+						eq(listing.id, input.id),
+						eq(listing.userId, ctx.session.user.id),
+					),
+				)
 				.limit(1);
 
 			if (listingResult.length === 0) {
-				throw new Error("Listing not found");
-			}
-
-			if (listingResult[0].userId !== ctx.session.user.id) {
-				throw new Error("Unauthorized: You can only edit your own listings");
-			}
-
-			// Get current images from database
-			const currentImages = await db.query.listingPhoto.findMany({
-				where: eq(listingPhoto.listingId, input.id),
-			});
-
-			// Convert keepImages URLs to keys if needed
-			const keepImageKeys = (input.keepImages || []).map(extractKeyFromUrl);
-			const imagesToDelete = currentImages.filter(
-				(img) => !keepImageKeys.includes(img.objectKey),
-			);
-
-			// Delete images from both S3 and database
-			for (const image of imagesToDelete) {
-				await deleteImage(image.objectKey);
-				await db.delete(listingPhoto).where(eq(listingPhoto.id, image.id));
-			}
-
-			// Upload new images if provided
-			const newImageKeys: string[] = [];
-			if (input.newFiles && input.newFiles.length > 0) {
-				for (const file of input.newFiles) {
-					const buffer = Buffer.from(file.data, "base64");
-					const objectKey = await uploadImage(buffer, ctx.session.user.id);
-
-					// Save to database
-					await db.insert(listingPhoto).values({
-						listingId: input.id,
-						objectKey,
-						isMain: false,
-					});
-
-					newImageKeys.push(objectKey);
-				}
-			}
-
-			// Update main image if specified
-			if (input.newMainImageUrl) {
-				const newMainImageKey = extractKeyFromUrl(input.newMainImageUrl);
-
-				// Clear current main image flag
-				await db
-					.update(listingPhoto)
-					.set({ isMain: false })
-					.where(eq(listingPhoto.listingId, input.id));
-
-				// Set new main image
-				if (
-					input.mainImageIsNewFile &&
-					input.mainImageNewFileIndex !== undefined
-				) {
-					// New file selected as main image
-					const selectedKey = newImageKeys[input.mainImageNewFileIndex];
-					if (selectedKey) {
-						await db
-							.update(listingPhoto)
-							.set({ isMain: true })
-							.where(eq(listingPhoto.objectKey, selectedKey));
-					}
-				} else {
-					// Existing image selected as main
-					await db
-						.update(listingPhoto)
-						.set({ isMain: true })
-						.where(eq(listingPhoto.objectKey, newMainImageKey));
-				}
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Listing not found.",
+				});
 			}
 
 			// Update listing details

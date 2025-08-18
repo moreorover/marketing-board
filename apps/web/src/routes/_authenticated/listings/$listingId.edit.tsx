@@ -32,6 +32,11 @@ function EditListingRoute() {
 	);
 	const listing = listingQuery.data;
 
+	const photosQuery = useQuery(
+		trpc.listingPhoto.listPhotos.queryOptions({ listingId }),
+	);
+	const photos = photosQuery.data || [];
+
 	// Check if current user owns this listing
 	const isOwner = listing?.userId === user.id;
 
@@ -55,30 +60,32 @@ function EditListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async ({
-		formData,
-		newFiles,
-		keepImages,
-		selectedMainImageUrl,
-		mainImageIsNewFile,
-		mainImageNewFileIndex,
-	}: {
-		formData: ListingFormData;
-		newFiles: { name: string; type: string; data: string }[];
-		keepImages?: string[];
-		selectedMainImageUrl?: string;
-		mainImageIsNewFile?: boolean;
-		mainImageNewFileIndex?: number;
-	}) => {
-		await updateListingMutation.mutateAsync({
-			id: listingId,
-			...formData,
-			keepImages,
-			newFiles: newFiles.length > 0 ? newFiles : undefined,
-			newMainImageUrl: selectedMainImageUrl,
-			mainImageIsNewFile,
-			mainImageNewFileIndex,
-		});
+	const setMainListingPhotoMutation = useMutation(
+		trpc.listingPhoto.setMainPhoto.mutationOptions({
+			onSuccess: () => {
+				toast.success("Main listing photo updated successfully!");
+				photosQuery.refetch();
+			},
+			onError: () => {
+				toast.error("Failed to update main listing photo.");
+			},
+		}),
+	);
+
+	const deleteListingPhotoMutation = useMutation(
+		trpc.listingPhoto.deletePhoto.mutationOptions({
+			onSuccess: () => {
+				toast.success("Listing photo deleted successfully!");
+				photosQuery.refetch();
+			},
+			onError: () => {
+				toast.error("Failed to delete listing photo.");
+			},
+		}),
+	);
+
+	const handleSubmit = (formData: ListingFormData) => {
+		updateListingMutation.mutate({ id: listingId, ...formData });
 	};
 
 	const handleCancel = () => {
@@ -111,6 +118,8 @@ function EditListingRoute() {
 				</CardHeader>
 				<CardContent>
 					<ListingForm
+						photos={photos}
+						listingId={listingId}
 						initialData={{
 							title: listing.title,
 							description: listing.description,
@@ -119,12 +128,19 @@ function EditListingRoute() {
 							city: listing.city,
 							postcode: listing.postcode,
 						}}
-						initialImages={listing.images || []}
+						onUpload={() => {
+							photosQuery.refetch();
+						}}
+						onPhotoDelete={(listingPhotoId) => {
+							deleteListingPhotoMutation.mutate({ listingPhotoId });
+						}}
+						onMainPhotoChange={(listingPhotoId) => {
+							setMainListingPhotoMutation.mutate({ listingPhotoId });
+						}}
 						onSubmit={handleSubmit}
 						onCancel={handleCancel}
 						submitButtonText="Update Listing"
 						isSubmitting={updateListingMutation.isPending}
-						mode="edit"
 					/>
 				</CardContent>
 			</Card>

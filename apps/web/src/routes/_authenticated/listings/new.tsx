@@ -12,10 +12,10 @@ export const Route = createFileRoute("/_authenticated/listings/new")({
 function NewListingRoute() {
 	const navigate = Route.useNavigate();
 
-	const unusedPhotosQuery = useQuery(
-		trpc.listingPhoto.listUnusedPhotos.queryOptions(),
+	const photosQuery = useQuery(
+		trpc.listingPhoto.listPhotos.queryOptions({ listingId: null }),
 	);
-	const unusedPhotos = unusedPhotosQuery.data || [];
+	const photos = photosQuery.data || [];
 
 	const createMutation = useMutation(
 		trpc.listing.create.mutationOptions({
@@ -33,7 +33,7 @@ function NewListingRoute() {
 		trpc.listingPhoto.setMainPhoto.mutationOptions({
 			onSuccess: () => {
 				toast.success("Main listing photo updated successfully!");
-				unusedPhotosQuery.refetch();
+				photosQuery.refetch();
 			},
 			onError: () => {
 				toast.error("Failed to update main listing photo.");
@@ -45,7 +45,7 @@ function NewListingRoute() {
 		trpc.listingPhoto.deletePhoto.mutationOptions({
 			onSuccess: () => {
 				toast.success("Listing photo deleted successfully!");
-				unusedPhotosQuery.refetch();
+				photosQuery.refetch();
 			},
 			onError: () => {
 				toast.error("Failed to delete listing photo.");
@@ -70,11 +70,11 @@ function NewListingRoute() {
 				</CardHeader>
 				<CardContent>
 					<ListingForm
-						photos={unusedPhotos}
+						photos={photos}
 						listingId={null}
 						onSubmit={handleSubmit}
 						onUpload={() => {
-							unusedPhotosQuery.refetch();
+							photosQuery.refetch();
 						}}
 						onPhotoDelete={(listingPhotoId) => {
 							deleteListingPhotoMutation.mutate({ listingPhotoId });
