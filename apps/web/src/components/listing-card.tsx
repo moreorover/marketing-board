@@ -10,6 +10,7 @@ interface ListingCardProps {
 		location: string;
 		image: string | null;
 		city: string;
+		postcodeOutcode: string;
 	};
 	showActions?: boolean;
 	onDelete?: (id: string) => void;
@@ -66,7 +67,7 @@ export function ListingCard({
 				)}
 				{listing.location && (
 					<p className="text-muted-foreground text-sm">
-						📍 {listing.city}, {listing.location}
+						📍 {listing.postcodeOutcode}, {listing.city}, {listing.location}
 					</p>
 				)}
 			</CardContent>

@@ -28,7 +28,8 @@ interface PostcodeDrawerProps {
 	onLocationUpdate: (data: {
 		city: string;
 		location: string;
-		postcode: string;
+		postcodeOutcode: string;
+		postcodeIncode: string;
 	}) => void;
 	disabled?: boolean;
 	triggerText?: string;
@@ -47,11 +48,18 @@ export function PostcodeDrawer({
 	const [locationData, setLocationData] = useState<{
 		city: string;
 		location: string;
+		postcodeOutcode: string;
+		postcodeIncode: string;
 	} | null>(null);
 	const [isValid, setIsValid] = useState(false);
 
 	const handleLocationUpdate = useCallback(
-		(data: { city: string; location: string }) => {
+		(data: {
+			city: string;
+			location: string;
+			postcodeOutcode: string;
+			postcodeIncode: string;
+		}) => {
 			setLocationData(data);
 		},
 		[],
@@ -67,10 +75,7 @@ export function PostcodeDrawer({
 
 	const handleSubmit = useCallback(() => {
 		if (locationData && postcode) {
-			onLocationUpdate({
-				...locationData,
-				postcode: postcode,
-			});
+			onLocationUpdate(locationData);
 			setIsOpen(false);
 		}
 	}, [locationData, postcode, onLocationUpdate]);

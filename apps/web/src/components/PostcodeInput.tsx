@@ -10,12 +10,19 @@ export interface PostcodeData {
 	admin_district: string;
 	admin_ward: string;
 	region: string;
+	outcode: string;
+	incode: string;
 }
 
 interface PostcodeInputProps {
 	initialPostcode?: string;
 	onPostcodeChange: (postcode: string) => void;
-	onLocationUpdate: (data: {city: string; location: string}) => void;
+	onLocationUpdate: (data: {
+		city: string;
+		location: string;
+		postcodeOutcode: string;
+		postcodeIncode: string;
+	}) => void;
 	onValidationChange?: (isValid: boolean) => void;
 	disabled?: boolean;
 	error?: string;
@@ -35,7 +42,7 @@ function usePostcodeLookup() {
 	}, [postcode]);
 
 	const postcodeQuery = useQuery({
-		...trpc.postcodes.lookup.queryOptions({postcode: debouncedPostcode}),
+		...trpc.postcodes.lookup.queryOptions({ postcode: debouncedPostcode }),
 		enabled: !!debouncedPostcode && debouncedPostcode.length >= 5,
 		retry: false,
 		refetchOnWindowFocus: false,
@@ -93,6 +100,8 @@ export function PostcodeInput({
 			onLocationUpdate({
 				city: postcodeData.admin_district,
 				location: postcodeData.admin_ward,
+				postcodeOutcode: postcodeData.outcode,
+				postcodeIncode: postcodeData.incode,
 			});
 		}
 	}, [postcodeData, onLocationUpdate]);
@@ -132,9 +141,7 @@ export function PostcodeInput({
 						)}
 					</div>
 				</div>
-				{error && (
-					<div className="mt-1 text-red-500 text-sm">{error}</div>
-				)}
+				{error && <div className="mt-1 text-red-500 text-sm">{error}</div>}
 				{isError && postcodeError && (
 					<div className="mt-1 text-red-500 text-sm">
 						{postcodeError.message}
@@ -166,6 +173,14 @@ export function PostcodeInput({
 						<div className="flex justify-between">
 							<span>Region:</span>
 							<span className="font-medium">{postcodeData.region}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>Outcode:</span>
+							<span className="font-medium">{postcodeData.outcode}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>Incode:</span>
+							<span className="font-medium">{postcodeData.incode}</span>
 						</div>
 					</div>
 				</div>
