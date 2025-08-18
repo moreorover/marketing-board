@@ -113,25 +113,66 @@ export function ListingForm({
 			</form.Field>
 
 			{/* Postcode Field with Auto-filled Location Details */}
-			<div className="grid gap-4 md:grid-cols-3">
-				<div>
-					<Label>Postcode</Label>
-					<PostcodeDrawer
-						initialPostcode={
-							initialData.postcodeOutcode && initialData.postcodeOutcode
-								? `${initialData.postcodeOutcode} ${initialData.postcodeIncode}`
-								: ""
-						}
-						onLocationUpdate={handleLocationUpdate}
-						disabled={isSubmitting}
-						triggerText={"Enter Postcode"}
-					/>
-				</div>
+			<div>
+				<Label>Postcode</Label>
+				<PostcodeDrawer
+					initialPostcode={
+						initialData.postcodeOutcode && initialData.postcodeOutcode
+							? `${initialData.postcodeOutcode} ${initialData.postcodeIncode}`
+							: ""
+					}
+					onLocationUpdate={handleLocationUpdate}
+					disabled={isSubmitting}
+					triggerText={"Enter Postcode"}
+				/>
+			</div>
 
-				<form.Field name="city">
+			<form.Field name="city">
+				{({ name, state }) => (
+					<div>
+						<Label htmlFor={name}>City</Label>
+						<Input
+							id={name}
+							name={name}
+							value={state.value}
+							placeholder="Auto-filled from postcode"
+							disabled={true}
+							className="cursor-not-allowed bg-muted text-muted-foreground"
+						/>
+						{state.value && (
+							<div className="mt-1 text-green-600 text-sm">
+								Auto-filled: {state.value}
+							</div>
+						)}
+					</div>
+				)}
+			</form.Field>
+
+			<form.Field name="location">
+				{({ name, state }) => (
+					<div>
+						<Label htmlFor={name}>Location</Label>
+						<Input
+							id={name}
+							name={name}
+							value={state.value}
+							placeholder="Auto-filled from postcode"
+							disabled={true}
+							className="cursor-not-allowed bg-muted text-muted-foreground"
+						/>
+						{state.value && (
+							<div className="mt-1 text-green-600 text-sm">
+								Auto-filled: {state.value}
+							</div>
+						)}
+					</div>
+				)}
+			</form.Field>
+			<div className="grid gap-4 md:grid-cols-2">
+				<form.Field name="postcodeOutcode">
 					{({ name, state }) => (
 						<div>
-							<Label htmlFor={name}>City</Label>
+							<Label htmlFor={name}>Postcode Outcode</Label>
 							<Input
 								id={name}
 								name={name}
@@ -148,11 +189,10 @@ export function ListingForm({
 						</div>
 					)}
 				</form.Field>
-
-				<form.Field name="location">
+				<form.Field name="postcodeIncode">
 					{({ name, state }) => (
 						<div>
-							<Label htmlFor={name}>Location</Label>
+							<Label htmlFor={name}>Postcode Incode</Label>
 							<Input
 								id={name}
 								name={name}
