@@ -5,6 +5,7 @@ import z from "zod";
 import {PhotoManager} from "@/components/PhotoManager";
 import {PostcodeDrawer} from "@/components/PostcodeDrawer";
 import {Button} from "@/components/ui/button";
+import {Checkbox} from "@/components/ui/checkbox";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
@@ -17,6 +18,8 @@ const FormSchema = z.object({
 	city: z.string().min(1), // Will be auto-filled from admin_district
 	postcodeOutcode: z.string().min(1), // Will be auto-filled from outcode
 	postcodeIncode: z.string().min(1), // Will be auto-filled from incode
+	inCall: z.boolean(),
+	outCall: z.boolean(),
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -59,6 +62,8 @@ export function ListingForm({
 			city: initialData.city || "",
 			postcodeOutcode: initialData.postcodeOutcode || "",
 			postcodeIncode: initialData.postcodeIncode || "",
+			inCall: initialData.inCall || false,
+			outCall: initialData.outCall || false,
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
@@ -255,6 +260,45 @@ export function ListingForm({
 					</div>
 				)}
 			</form.Field>
+
+			{/* Service Type Checkboxes */}
+			<div className="space-y-4">
+				<Label>Service Type</Label>
+				<div className="flex space-x-6">
+					<form.Field name="inCall">
+						{({ name, state, handleChange }) => (
+							<div className="flex items-center space-x-2">
+								<Checkbox
+									id={name}
+									name={name}
+									checked={state.value}
+									onCheckedChange={(checked) => handleChange(Boolean(checked))}
+									disabled={isSubmitting}
+								/>
+								<Label htmlFor={name} className="font-normal text-sm">
+									In Call
+								</Label>
+							</div>
+						)}
+					</form.Field>
+					<form.Field name="outCall">
+						{({ name, state, handleChange }) => (
+							<div className="flex items-center space-x-2">
+								<Checkbox
+									id={name}
+									name={name}
+									checked={state.value}
+									onCheckedChange={(checked) => handleChange(Boolean(checked))}
+									disabled={isSubmitting}
+								/>
+								<Label htmlFor={name} className="font-normal text-sm">
+									Out Call
+								</Label>
+							</div>
+						)}
+					</form.Field>
+				</div>
+			</div>
 
 			<PhotoManager
 				photos={photos}

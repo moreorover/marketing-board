@@ -1,7 +1,8 @@
 import {relations} from "drizzle-orm";
-import {index, pgTable, text, uuid, varchar} from "drizzle-orm/pg-core";
+import {boolean, index, pgTable, text, uuid, varchar} from "drizzle-orm/pg-core";
 import {user} from "@/db/schema/auth";
 import {listingPhoto} from "@/db/schema/listing-photo";
+import {listingPricing} from "@/db/schema/listing-pricing";
 
 export const listing = pgTable(
 	"listing",
@@ -12,6 +13,8 @@ export const listing = pgTable(
 		location: text("location").notNull(),
 		city: text("city").notNull(),
 		phone: text("phone").notNull(),
+		inCall: boolean("in_call").default(false),
+		outCall: boolean("out_call").default(false),
 		userId: text("user_id")
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),
@@ -32,6 +35,7 @@ export const listing = pgTable(
 
 export const listingRelations = relations(listing, ({ many, one }) => ({
 	images: many(listingPhoto),
+	pricing: many(listingPricing),
 	user: one(user, {
 		fields: [listing.userId],
 		references: [user.id],

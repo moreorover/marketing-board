@@ -191,6 +191,8 @@ export const listingRouter = router({
 				city: z.string().min(1),
 				postcodeOutcode: z.string().min(1, "Postcode Outcode is required"),
 				postcodeIncode: z.string().min(1, "Postcode Incode is required"),
+				inCall: z.boolean(),
+				outCall: z.boolean(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -205,6 +207,8 @@ export const listingRouter = router({
 					phone: input.phone,
 					postcodeOutcode: input.postcodeOutcode,
 					postcodeIncode: input.postcodeIncode,
+					inCall: input.inCall,
+					outCall: input.outCall,
 					userId: ctx.session.user.id,
 				})
 				.returning();
@@ -235,6 +239,8 @@ export const listingRouter = router({
 				city: z.string().min(1),
 				postcodeOutcode: z.string().min(1, "Postcode Outcode is required"),
 				postcodeIncode: z.string().min(1, "Postcode Incode is required"),
+				inCall: z.boolean(),
+				outCall: z.boolean(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -268,6 +274,8 @@ export const listingRouter = router({
 					city: input.city,
 					postcodeOutcode: input.postcodeOutcode,
 					postcodeIncode: input.postcodeIncode,
+					inCall: input.inCall,
+					outCall: input.outCall,
 				})
 				.where(eq(listing.id, input.id));
 		}),
