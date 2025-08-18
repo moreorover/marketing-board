@@ -28,7 +28,8 @@ interface PostcodeDrawerProps {
 	onLocationUpdate: (data: {
 		city: string;
 		location: string;
-		postcode: string;
+		postcodeOutcode: string;
+		postcodeIncode: string;
 	}) => void;
 	disabled?: boolean;
 	triggerText?: string;
@@ -42,38 +43,34 @@ export function PostcodeDrawer({
 	initialPostcode = "",
 }: PostcodeDrawerProps) {
 	const isDesktop = useMediaQuery("(min-width: 768px)");
-	const [postcode, setPostcode] = useState(initialPostcode);
 	const [isOpen, setIsOpen] = useState(false);
 	const [locationData, setLocationData] = useState<{
 		city: string;
 		location: string;
+		postcodeOutcode: string;
+		postcodeIncode: string;
 	} | null>(null);
-	const [isValid, setIsValid] = useState(false);
 
-	const handleLocationUpdate = useCallback(
-		(data: { city: string; location: string }) => {
+	const handleUpdate = useCallback(
+		(
+			data: {
+				city: string;
+				location: string;
+				postcodeOutcode: string;
+				postcodeIncode: string;
+			} | null,
+		) => {
 			setLocationData(data);
 		},
 		[],
 	);
 
-	const handlePostcodeChange = useCallback((newPostcode: string) => {
-		setPostcode(newPostcode);
-	}, []);
-
-	const handleValidationChange = useCallback((isValidPostcode: boolean) => {
-		setIsValid(isValidPostcode);
-	}, []);
-
 	const handleSubmit = useCallback(() => {
-		if (locationData && postcode) {
-			onLocationUpdate({
-				...locationData,
-				postcode: postcode,
-			});
+		if (locationData) {
+			onLocationUpdate(locationData);
 			setIsOpen(false);
 		}
-	}, [locationData, postcode, onLocationUpdate]);
+	}, [locationData, onLocationUpdate]);
 
 	if (isDesktop) {
 		return (
@@ -94,16 +91,14 @@ export function PostcodeDrawer({
 					<div className="px-4">
 						<PostcodeInput
 							initialPostcode={initialPostcode}
-							onPostcodeChange={handlePostcodeChange}
-							onLocationUpdate={handleLocationUpdate}
-							onValidationChange={handleValidationChange}
+							onUpdate={handleUpdate}
 							disabled={disabled}
 						/>
 					</div>
 					<DialogFooter>
 						<Button
 							onClick={handleSubmit}
-							disabled={!isValid || !locationData || !postcode}
+							disabled={!locationData}
 							// className="w-full"
 						>
 							Use This Postcode
@@ -135,16 +130,14 @@ export function PostcodeDrawer({
 				<div className="px-4">
 					<PostcodeInput
 						initialPostcode={initialPostcode}
-						onPostcodeChange={handlePostcodeChange}
-						onLocationUpdate={handleLocationUpdate}
-						onValidationChange={handleValidationChange}
+						onUpdate={handleUpdate}
 						disabled={disabled}
 					/>
 				</div>
 				<DrawerFooter>
 					<Button
 						onClick={handleSubmit}
-						disabled={!isValid || !locationData || !postcode}
+						disabled={!locationData}
 						className="w-full"
 					>
 						Use This Postcode

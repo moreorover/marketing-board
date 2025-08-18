@@ -1,20 +1,34 @@
 import {relations} from "drizzle-orm";
-import {pgTable, text, uuid} from "drizzle-orm/pg-core";
+import {index, pgTable, text, uuid, varchar} from "drizzle-orm/pg-core";
 import {user} from "@/db/schema/auth";
-import {listingPhoto} from "./listing-photo";
+import {listingPhoto} from "@/db/schema/listing-photo";
 
-export const listing = pgTable("listing", {
-	id: uuid("id").primaryKey().defaultRandom(),
-	title: text("title").notNull(),
-	description: text("description").notNull(),
-	location: text("location").notNull(),
-	city: text("city").notNull(),
-	postcode: text("postcode").notNull(),
-	phone: text("phone").notNull(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
-});
+export const listing = pgTable(
+	"listing",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		title: text("title").notNull(),
+		description: text("description").notNull(),
+		location: text("location").notNull(),
+		city: text("city").notNull(),
+		phone: text("phone").notNull(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+
+		// UK postcodes: outcode max 4 chars, incode max 3 chars
+		postcodeOutcode: varchar("postcode_outcode", { length: 4 }).notNull(),
+		postcodeIncode: varchar("postcode_incode", { length: 3 }).notNull(),
+	},
+	(table) => ({
+		postcodeOutcodeIdx: index("listing_outcode_idx").on(table.postcodeOutcode),
+		// Optional: composite index for exact postcode searches
+		postcodeCompositeIdx: index("listing_postcode_composite_idx").on(
+			table.postcodeOutcode,
+			table.postcodeIncode,
+		),
+	}),
+);
 
 export const listingRelations = relations(listing, ({ many, one }) => ({
 	images: many(listingPhoto),

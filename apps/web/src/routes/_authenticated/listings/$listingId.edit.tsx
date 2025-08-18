@@ -102,7 +102,8 @@ function EditListingRoute() {
 							location: listing.location,
 							phone: listing.phone,
 							city: listing.city,
-							postcode: listing.postcode,
+							postcodeOutcode: listing.postcodeOutcode,
+							postcodeIncode: listing.postcodeIncode,
 						}}
 						onUpload={() => {
 							photosQuery.refetch();

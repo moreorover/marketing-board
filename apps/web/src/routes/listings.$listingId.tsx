@@ -118,7 +118,7 @@ function RouteComponent() {
 									>
 										<img
 											src={image.url}
-											alt={"Thumbnail ${index + 1}"}
+											alt={"Thumbnail"}
 											className="h-full w-full object-cover"
 										/>
 									</Button>
@@ -137,7 +137,8 @@ function RouteComponent() {
 								<div className="flex items-center text-muted-foreground">
 									<span className="mr-1">📍</span>
 									<span>
-										{listing.city}, {listing.location}
+										{listing.postcodeOutcode}, {listing.city},{" "}
+										{listing.location}
 									</span>
 								</div>
 							)}

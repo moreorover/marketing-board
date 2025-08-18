@@ -1,70 +1,35 @@
-import {useQuery} from "@tanstack/react-query";
 import {CheckCircle, Loader2, MapPin, XCircle} from "lucide-react";
-import {useEffect, useState} from "react";
+import {useEffect} from "react";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {trpc} from "@/utils/trpc";
+import usePostcodeLookup from "@/hooks/usePostcodeLookup";
 
 export interface PostcodeData {
 	postcode: string;
 	admin_district: string;
 	admin_ward: string;
 	region: string;
+	outcode: string;
+	incode: string;
 }
 
 interface PostcodeInputProps {
 	initialPostcode?: string;
-	onPostcodeChange: (postcode: string) => void;
-	onLocationUpdate: (data: {city: string; location: string}) => void;
-	onValidationChange?: (isValid: boolean) => void;
+	onUpdate: (
+		data: {
+			city: string;
+			location: string;
+			postcodeOutcode: string;
+			postcodeIncode: string;
+		} | null,
+	) => void;
 	disabled?: boolean;
 	error?: string;
 }
 
-function usePostcodeLookup() {
-	const [postcode, setPostcode] = useState("");
-	const [debouncedPostcode, setDebouncedPostcode] = useState("");
-	const [isValidating, setIsValidating] = useState(false);
-
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setDebouncedPostcode(postcode);
-		}, 500);
-
-		return () => clearTimeout(timer);
-	}, [postcode]);
-
-	const postcodeQuery = useQuery({
-		...trpc.postcodes.lookup.queryOptions({postcode: debouncedPostcode}),
-		enabled: !!debouncedPostcode && debouncedPostcode.length >= 5,
-		retry: false,
-		refetchOnWindowFocus: false,
-	});
-
-	useEffect(() => {
-		if (debouncedPostcode && debouncedPostcode.length >= 5) {
-			setIsValidating(true);
-		} else {
-			setIsValidating(false);
-		}
-	}, [debouncedPostcode]);
-
-	return {
-		postcode,
-		setPostcode,
-		isValidating: isValidating && postcodeQuery.isFetching,
-		postcodeData: postcodeQuery.data,
-		postcodeError: postcodeQuery.error,
-		isSuccess: !!postcodeQuery.data && !postcodeQuery.error,
-		isError: !!postcodeQuery.error,
-	};
-}
-
 export function PostcodeInput({
 	initialPostcode = "",
-	onPostcodeChange,
-	onLocationUpdate,
-	onValidationChange,
+	onUpdate,
 	disabled = false,
 	error,
 }: PostcodeInputProps) {
@@ -76,32 +41,20 @@ export function PostcodeInput({
 		postcodeError,
 		isSuccess,
 		isError,
-	} = usePostcodeLookup();
+	} = usePostcodeLookup(initialPostcode);
 
 	useEffect(() => {
-		if (initialPostcode) {
-			setPostcode(initialPostcode);
-		}
-	}, [initialPostcode]);
-
-	useEffect(() => {
-		onPostcodeChange(postcode);
-	}, [postcode, onPostcodeChange]);
-
-	useEffect(() => {
-		if (postcodeData) {
-			onLocationUpdate({
+		if (postcodeData && isSuccess) {
+			onUpdate({
 				city: postcodeData.admin_district,
 				location: postcodeData.admin_ward,
+				postcodeOutcode: postcodeData.outcode,
+				postcodeIncode: postcodeData.incode,
 			});
+		} else {
+			onUpdate(null);
 		}
-	}, [postcodeData, onLocationUpdate]);
-
-	useEffect(() => {
-		if (onValidationChange) {
-			onValidationChange(isSuccess);
-		}
-	}, [isSuccess, onValidationChange]);
+	}, [postcodeData, isSuccess, onUpdate]);
 
 	return (
 		<>
@@ -132,9 +85,7 @@ export function PostcodeInput({
 						)}
 					</div>
 				</div>
-				{error && (
-					<div className="mt-1 text-red-500 text-sm">{error}</div>
-				)}
+				{error && <div className="mt-1 text-red-500 text-sm">{error}</div>}
 				{isError && postcodeError && (
 					<div className="mt-1 text-red-500 text-sm">
 						{postcodeError.message}
@@ -166,6 +117,14 @@ export function PostcodeInput({
 						<div className="flex justify-between">
 							<span>Region:</span>
 							<span className="font-medium">{postcodeData.region}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>Outcode:</span>
+							<span className="font-medium">{postcodeData.outcode}</span>
+						</div>
+						<div className="flex justify-between">
+							<span>Incode:</span>
+							<span className="font-medium">{postcodeData.incode}</span>
 						</div>
 					</div>
 				</div>

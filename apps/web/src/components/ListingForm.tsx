@@ -14,8 +14,9 @@ const FormSchema = z.object({
 	description: z.string().min(1),
 	location: z.string().min(1), // Will be auto-filled from admin_ward
 	phone: z.string().startsWith("+44").min(13).max(13),
-	postcode: z.string().min(1, "Postcode is required"),
 	city: z.string().min(1), // Will be auto-filled from admin_district
+	postcodeOutcode: z.string().min(1), // Will be auto-filled from outcode
+	postcodeIncode: z.string().min(1), // Will be auto-filled from incode
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -55,27 +56,27 @@ export function ListingForm({
 			description: initialData.description || "",
 			location: initialData.location || "",
 			phone: initialData.phone || "",
-			postcode: initialData.postcode || "",
 			city: initialData.city || "",
+			postcodeOutcode: initialData.postcodeOutcode || "",
+			postcodeIncode: initialData.postcodeIncode || "",
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
-			await onSubmit(value);
+			onSubmit(value);
 		},
 	});
 
-	const handlePostcodeChange = useCallback(
-		(postcode: string) => {
-			form.setFieldValue("postcode", postcode);
-		},
-		[form],
-	);
-
 	const handleLocationUpdate = useCallback(
-		(data: { city: string; location: string; postcode: string }) => {
+		(data: {
+			city: string;
+			location: string;
+			postcodeOutcode: string;
+			postcodeIncode: string;
+		}) => {
 			form.setFieldValue("city", data.city);
 			form.setFieldValue("location", data.location);
-			form.setFieldValue("postcode", data.postcode);
+			form.setFieldValue("postcodeOutcode", data.postcodeOutcode);
+			form.setFieldValue("postcodeIncode", data.postcodeIncode);
 		},
 		[form],
 	);
@@ -112,30 +113,66 @@ export function ListingForm({
 			</form.Field>
 
 			{/* Postcode Field with Auto-filled Location Details */}
-			<div className="grid gap-4 md:grid-cols-3">
-				<form.Field name="postcode">
-					{({ state }) => (
-						<div>
-							<Label>Postcode</Label>
-							<PostcodeDrawer
-								initialPostcode={initialData.postcode}
-								onLocationUpdate={handleLocationUpdate}
-								disabled={isSubmitting}
-								triggerText={state.value || "Enter Postcode"}
-							/>
-							{state.meta.errors.length > 0 && state.meta.isTouched && (
-								<div className="mt-1 text-red-500 text-sm">
-									{state.meta.errors[0]?.message}
-								</div>
-							)}
-						</div>
-					)}
-				</form.Field>
+			<div>
+				<Label>Postcode</Label>
+				<PostcodeDrawer
+					initialPostcode={
+						initialData.postcodeOutcode && initialData.postcodeOutcode
+							? `${initialData.postcodeOutcode} ${initialData.postcodeIncode}`
+							: ""
+					}
+					onLocationUpdate={handleLocationUpdate}
+					disabled={isSubmitting}
+					triggerText={"Enter Postcode"}
+				/>
+			</div>
 
-				<form.Field name="city">
+			<form.Field name="city">
+				{({ name, state }) => (
+					<div>
+						<Label htmlFor={name}>City</Label>
+						<Input
+							id={name}
+							name={name}
+							value={state.value}
+							placeholder="Auto-filled from postcode"
+							disabled={true}
+							className="cursor-not-allowed bg-muted text-muted-foreground"
+						/>
+						{state.value && (
+							<div className="mt-1 text-green-600 text-sm">
+								Auto-filled: {state.value}
+							</div>
+						)}
+					</div>
+				)}
+			</form.Field>
+
+			<form.Field name="location">
+				{({ name, state }) => (
+					<div>
+						<Label htmlFor={name}>Location</Label>
+						<Input
+							id={name}
+							name={name}
+							value={state.value}
+							placeholder="Auto-filled from postcode"
+							disabled={true}
+							className="cursor-not-allowed bg-muted text-muted-foreground"
+						/>
+						{state.value && (
+							<div className="mt-1 text-green-600 text-sm">
+								Auto-filled: {state.value}
+							</div>
+						)}
+					</div>
+				)}
+			</form.Field>
+			<div className="grid gap-4 md:grid-cols-2">
+				<form.Field name="postcodeOutcode">
 					{({ name, state }) => (
 						<div>
-							<Label htmlFor={name}>City</Label>
+							<Label htmlFor={name}>Postcode Outcode</Label>
 							<Input
 								id={name}
 								name={name}
@@ -152,11 +189,10 @@ export function ListingForm({
 						</div>
 					)}
 				</form.Field>
-
-				<form.Field name="location">
+				<form.Field name="postcodeIncode">
 					{({ name, state }) => (
 						<div>
-							<Label htmlFor={name}>Location</Label>
+							<Label htmlFor={name}>Postcode Incode</Label>
 							<Input
 								id={name}
 								name={name}
