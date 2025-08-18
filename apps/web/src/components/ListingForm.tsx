@@ -10,6 +10,33 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
 
+const defaultPricingTemplate = [
+	{ duration: "15min", price: 0, label: "15 minutes" },
+	{ duration: "30min", price: 0, label: "30 minutes" },
+	{ duration: "1h", price: 0, label: "1 hour" },
+	{ duration: "2h", price: 0, label: "2 hours" },
+	{ duration: "3h", price: 0, label: "3 hours" },
+	{ duration: "24h", price: 0, label: "overnight" },
+];
+
+function mergePricingWithTemplate(
+	inputPricing: { duration: string; price: number }[] | undefined,
+) {
+	return inputPricing
+		? defaultPricingTemplate.map((template) => {
+				// Find matching duration in input array
+				const inputItem = inputPricing.find(
+					(item) => item.duration === template.duration,
+				);
+
+				return {
+					...template,
+					price: inputItem ? inputItem.price : template.price,
+				};
+			})
+		: defaultPricingTemplate;
+}
+
 const FormSchema = z.object({
 	title: z.string().min(1),
 	description: z.string().min(1),
@@ -24,6 +51,7 @@ const FormSchema = z.object({
 		z.object({
 			duration: z.string(),
 			price: z.number().min(0),
+			label: z.string(),
 		}),
 	),
 });
@@ -70,14 +98,7 @@ export function ListingForm({
 			postcodeIncode: initialData.postcodeIncode || "",
 			inCall: initialData.inCall || false,
 			outCall: initialData.outCall || false,
-			pricing: initialData.pricing || [
-				{ duration: "15min", price: 0 },
-				{ duration: "30min", price: 0 },
-				{ duration: "1h", price: 0 },
-				{ duration: "2h", price: 0 },
-				{ duration: "3h", price: 0 },
-				{ duration: "24h", price: 0 },
-			],
+			pricing: mergePricingWithTemplate(initialData.pricing),
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
@@ -314,55 +335,68 @@ export function ListingForm({
 				</div>
 			</div>
 
-			{/* Pricing Section */}
-			<div className="space-y-4">
-				<Label>Pricing (£)</Label>
-				<div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-					{[
-						{ duration: "15min", label: "15 minutes" },
-						{ duration: "30min", label: "30 minutes" },
-						{ duration: "1h", label: "1 hour" },
-						{ duration: "2h", label: "2 hours" },
-						{ duration: "3h", label: "3 hours" },
-						{ duration: "24h", label: "24 hours" },
-					].map(({ duration, label }, index) => (
-						<form.Field key={duration} name={`pricing.${index}.price` as any}>
-							{({ name, state, handleChange, handleBlur }) => (
-								<div>
-									<Label htmlFor={name} className="text-sm">
-										{label}
-									</Label>
-									<div className="relative">
-										<span className="-translate-y-1/2 absolute top-1/2 left-3 text-muted-foreground text-sm">
-											£
-										</span>
-										<Input
-											id={name}
-											name={name}
-											type="number"
-											value={state.value || 0}
-											onBlur={handleBlur}
-											onChange={(e) => {
-												const value = Number(e.target.value) || 0;
-												handleChange(value as any);
-											}}
-											placeholder="0"
-											disabled={isSubmitting}
-											min="0"
-											step="1"
-											className="pl-8"
-										/>
+			{/* Pricing */}
+			<div className="rounded-lg">
+				<h3 className="mb-4 font-semibold text-lg">Pricing</h3>
+				<form.Field name="pricing" mode="array">
+					{(field) => (
+						<div className="space-y-4">
+							{field.state.value.map((item, index) => (
+								<div
+									key={item.duration}
+									className="flex items-center gap-4 rounded-lg border p-3"
+								>
+									{/* Duration Label */}
+									<div className="flex-1">
+										<span className="font-medium text-sm">{item.label}</span>
 									</div>
-									{state.meta.errors.length > 0 && state.meta.isTouched && (
-										<div className="mt-1 text-red-500 text-sm">
-											{state.meta.errors[0]?.message}
-										</div>
-									)}
+
+									{/* Price Input */}
+									<div className="max-w-xs flex-1">
+										<form.Field name={`pricing[${index}].price`}>
+											{(priceField) => (
+												<div className="relative">
+													<span className="-translate-y-1/2 absolute top-1/2 left-3 transform">
+														£
+													</span>
+													<input
+														type="number"
+														step="5"
+														min="0"
+														name={priceField.name}
+														value={priceField.state.value}
+														onBlur={priceField.handleBlur}
+														onChange={(e) => {
+															const newValue =
+																Number.parseFloat(e.target.value) || 0;
+															priceField.handleChange(newValue);
+														}}
+														className="w-full rounded-md border py-2 pr-3 pl-8 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+														placeholder="0.00"
+													/>
+													{priceField.state.meta.isTouched &&
+														priceField.state.meta.errors.length > 0 && (
+															<p className="mt-1 text-red-500 text-sm">
+																{priceField.state.meta.errors[0]?.message ||
+																	"Invalid value"}
+															</p>
+														)}
+												</div>
+											)}
+										</form.Field>
+									</div>
 								</div>
-							)}
-						</form.Field>
-					))}
-				</div>
+							))}
+
+							{field.state.meta.isTouched &&
+								field.state.meta.errors.length > 0 && (
+									<p className="mt-1 text-red-500 text-sm">
+										{field.state.meta.errors[0]?.message || "Invalid value"}
+									</p>
+								)}
+						</div>
+					)}
+				</form.Field>
 			</div>
 
 			<PhotoManager
