@@ -20,6 +20,14 @@ const FormSchema = z.object({
 	postcodeIncode: z.string().min(1), // Will be auto-filled from incode
 	inCall: z.boolean(),
 	outCall: z.boolean(),
+	pricing: z.object({
+		"15min": z.number().min(0),
+		"30min": z.number().min(0),
+		"1h": z.number().min(0),
+		"2h": z.number().min(0),
+		"3h": z.number().min(0),
+		"24h": z.number().min(0),
+	}),
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -64,6 +72,14 @@ export function ListingForm({
 			postcodeIncode: initialData.postcodeIncode || "",
 			inCall: initialData.inCall || false,
 			outCall: initialData.outCall || false,
+			pricing: initialData.pricing || {
+				"15min": 0,
+				"30min": 0,
+				"1h": 0,
+				"2h": 0,
+				"3h": 0,
+				"24h": 0,
+			},
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
@@ -297,6 +313,57 @@ export function ListingForm({
 							</div>
 						)}
 					</form.Field>
+				</div>
+			</div>
+
+			{/* Pricing Section */}
+			<div className="space-y-4">
+				<Label>Pricing (£)</Label>
+				<div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+					{[
+						{ duration: "15min", label: "15 minutes" },
+						{ duration: "30min", label: "30 minutes" },
+						{ duration: "1h", label: "1 hour" },
+						{ duration: "2h", label: "2 hours" },
+						{ duration: "3h", label: "3 hours" },
+						{ duration: "24h", label: "24 hours" },
+					].map(({ duration, label }) => (
+						<form.Field key={duration} name={`pricing.${duration}` as any}>
+							{({ name, state, handleChange, handleBlur }) => (
+								<div>
+									<Label htmlFor={name} className="text-sm">
+										{label}
+									</Label>
+									<div className="relative">
+										<span className="-translate-y-1/2 absolute top-1/2 left-3 text-muted-foreground text-sm">
+											£
+										</span>
+										<Input
+											id={name}
+											name={name}
+											type="number"
+											value={state.value}
+											onBlur={handleBlur}
+											onChange={(e) => {
+												const value = e.target.value;
+												handleChange(Number(value) || 0);
+											}}
+											placeholder="0"
+											disabled={isSubmitting}
+											min="0"
+											step="1"
+											className="pl-8"
+										/>
+									</div>
+									{state.meta.errors.length > 0 && state.meta.isTouched && (
+										<div className="mt-1 text-red-500 text-sm">
+											{state.meta.errors[0]?.message}
+										</div>
+									)}
+								</div>
+							)}
+						</form.Field>
+					))}
 				</div>
 			</div>
 
