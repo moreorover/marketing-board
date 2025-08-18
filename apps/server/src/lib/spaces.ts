@@ -35,7 +35,7 @@ export async function uploadImage(
 		.webp({ quality, nearLossless })
 		.toBuffer();
 
-	const objectKey = `photos/user-${userId}/${uniqueFileName}`;
+	const objectKey = `user/${userId}/photos/${uniqueFileName}`;
 
 	await spacesClient.send(
 		new PutObjectCommand({
