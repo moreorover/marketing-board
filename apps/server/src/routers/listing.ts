@@ -159,6 +159,8 @@ export const listingRouter = router({
 					location: true,
 					description: true,
 					postcodeOutcode: true,
+					inCall: true,
+					outCall: true,
 				},
 				where: eq(listing.id, input.listingId),
 				with: {
