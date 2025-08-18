@@ -1,11 +1,6 @@
-import {
-	DeleteObjectCommand,
-	GetObjectCommand,
-	PutObjectCommand,
-	S3Client,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { randomUUID } from "crypto";
+import {DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client,} from "@aws-sdk/client-s3";
+import {getSignedUrl} from "@aws-sdk/s3-request-presigner";
+import {randomUUID} from "crypto";
 import sharp from "sharp";
 
 const spacesClient = new S3Client({
@@ -24,7 +19,7 @@ const spacesClient = new S3Client({
  */
 export async function uploadImage(
 	imageBuffer: Buffer,
-	listingId: string,
+	userId: string,
 	quality = 100,
 	nearLossless = true,
 ): Promise<string> {
@@ -40,7 +35,7 @@ export async function uploadImage(
 		.webp({ quality, nearLossless })
 		.toBuffer();
 
-	const objectKey = `listings/${listingId}/${uniqueFileName}`;
+	const objectKey = `photos/user-${userId}/${uniqueFileName}`;
 
 	await spacesClient.send(
 		new PutObjectCommand({
@@ -80,7 +75,7 @@ export async function generateSignedImageUrls(
 	expiresIn = 3600,
 ): Promise<{ imageKey: string; isMain: boolean; url: string }[]> {
 	const results: { imageKey: string; isMain: boolean; url: string }[] = [];
-	
+
 	await Promise.all(
 		images.map(async (image) => {
 			try {

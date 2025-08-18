@@ -1,18 +1,12 @@
 import {TRPCError} from "@trpc/server";
-import {and, eq} from "drizzle-orm";
+import {and, asc, desc, eq, isNull} from "drizzle-orm";
 import z from "zod";
+import {db} from "@/db";
+import {listing} from "@/db/schema/listing";
+import {listingPhoto} from "@/db/schema/listing-photo";
 import {phoneView} from "@/db/schema/phone-view";
-import {db} from "../db";
-import {listing} from "../db/schema/listing";
-import {listingImage} from "../db/schema/listing-image";
-import {
-  deleteImage,
-  extractKeyFromUrl,
-  generateSignedImageUrl,
-  generateSignedImageUrls,
-  uploadImage,
-} from "../lib/spaces";
-import {protectedProcedure, publicProcedure, router} from "../lib/trpc";
+import {generateSignedImageUrl, generateSignedImageUrls} from "@/lib/spaces";
+import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
 
 export const listingRouter = router({
 	getPublic: publicProcedure.query(async () => {
@@ -25,7 +19,7 @@ export const listingRouter = router({
 			},
 			with: {
 				images: {
-					where: eq(listingImage.isMain, true),
+					where: eq(listingPhoto.isMain, true),
 					columns: {
 						objectKey: true,
 					},
@@ -68,7 +62,7 @@ export const listingRouter = router({
 			where: eq(listing.userId, ctx.session.user.id),
 			with: {
 				images: {
-					where: eq(listingImage.isMain, true),
+					where: eq(listingPhoto.isMain, true),
 					columns: {
 						objectKey: true,
 					},
@@ -109,7 +103,9 @@ export const listingRouter = router({
 					eq(listing.userId, ctx.session.user.id),
 				),
 				with: {
-					images: {},
+					images: {
+						orderBy: [desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt)],
+					},
 				},
 			});
 
@@ -149,7 +145,9 @@ export const listingRouter = router({
 				},
 				where: eq(listing.id, input.listingId),
 				with: {
-					images: {},
+					images: {
+						orderBy: [desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt)],
+					},
 				},
 			});
 
@@ -187,16 +185,6 @@ export const listingRouter = router({
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				city: z.string().min(1),
 				postcode: z.string().min(1, "Postcode is required"),
-				files: z
-					.array(
-						z.object({
-							name: z.string(),
-							type: z.string(),
-							data: z.string(),
-							main: z.boolean().default(false),
-						}),
-					)
-					.optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -216,22 +204,15 @@ export const listingRouter = router({
 
 			const listingId = createdListing[0].id;
 
-			// Upload images and save to database
-			if (input.files && input.files.length > 0) {
-				for (const file of input.files) {
-					const buffer = Buffer.from(file.data, "base64");
-
-					// Upload to S3 and get object key
-					const objectKey = await uploadImage(buffer, listingId);
-
-					// Save image metadata to database
-					await db.insert(listingImage).values({
-						listingId,
-						objectKey,
-						isMain: file.main,
-					});
-				}
-			}
+			await db
+				.update(listingPhoto)
+				.set({ listingId })
+				.where(
+					and(
+						eq(listingPhoto.userId, ctx.session.user.id),
+						isNull(listingPhoto.listingId),
+					),
+				);
 
 			return createdListing;
 		}),
@@ -243,22 +224,9 @@ export const listingRouter = router({
 				title: z.string().min(1),
 				description: z.string().min(1),
 				location: z.string().min(1),
-				city: z.string().min(1),
-				postcode: z.string().min(1),
 				phone: z.string().min(13).max(13).startsWith("+44"),
-				keepImages: z.array(z.string()).optional(),
-				newMainImageUrl: z.string().optional(),
-				mainImageIsNewFile: z.boolean().optional(),
-				mainImageNewFileIndex: z.number().int().min(0).optional(),
-				newFiles: z
-					.array(
-						z.object({
-							name: z.string(),
-							type: z.string(),
-							data: z.string(),
-						}),
-					)
-					.optional(),
+				city: z.string().min(1),
+				postcode: z.string().min(1, "Postcode is required"),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -266,82 +234,19 @@ export const listingRouter = router({
 			const listingResult = await db
 				.select({ userId: listing.userId })
 				.from(listing)
-				.where(eq(listing.id, input.id))
+				.where(
+					and(
+						eq(listing.id, input.id),
+						eq(listing.userId, ctx.session.user.id),
+					),
+				)
 				.limit(1);
 
 			if (listingResult.length === 0) {
-				throw new Error("Listing not found");
-			}
-
-			if (listingResult[0].userId !== ctx.session.user.id) {
-				throw new Error("Unauthorized: You can only edit your own listings");
-			}
-
-			// Get current images from database
-			const currentImages = await db.query.listingImage.findMany({
-				where: eq(listingImage.listingId, input.id),
-			});
-
-			// Convert keepImages URLs to keys if needed
-			const keepImageKeys = (input.keepImages || []).map(extractKeyFromUrl);
-			const imagesToDelete = currentImages.filter(
-				(img) => !keepImageKeys.includes(img.objectKey),
-			);
-
-			// Delete images from both S3 and database
-			for (const image of imagesToDelete) {
-				await deleteImage(image.objectKey);
-				await db.delete(listingImage).where(eq(listingImage.id, image.id));
-			}
-
-			// Upload new images if provided
-			const newImageKeys: string[] = [];
-			if (input.newFiles && input.newFiles.length > 0) {
-				for (const file of input.newFiles) {
-					const buffer = Buffer.from(file.data, "base64");
-					const objectKey = await uploadImage(buffer, input.id);
-
-					// Save to database
-					await db.insert(listingImage).values({
-						listingId: input.id,
-						objectKey,
-						isMain: false,
-					});
-
-					newImageKeys.push(objectKey);
-				}
-			}
-
-			// Update main image if specified
-			if (input.newMainImageUrl) {
-				const newMainImageKey = extractKeyFromUrl(input.newMainImageUrl);
-
-				// Clear current main image flag
-				await db
-					.update(listingImage)
-					.set({ isMain: false })
-					.where(eq(listingImage.listingId, input.id));
-
-				// Set new main image
-				if (
-					input.mainImageIsNewFile &&
-					input.mainImageNewFileIndex !== undefined
-				) {
-					// New file selected as main image
-					const selectedKey = newImageKeys[input.mainImageNewFileIndex];
-					if (selectedKey) {
-						await db
-							.update(listingImage)
-							.set({ isMain: true })
-							.where(eq(listingImage.objectKey, selectedKey));
-					}
-				} else {
-					// Existing image selected as main
-					await db
-						.update(listingImage)
-						.set({ isMain: true })
-						.where(eq(listingImage.objectKey, newMainImageKey));
-				}
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "Listing not found.",
+				});
 			}
 
 			// Update listing details
