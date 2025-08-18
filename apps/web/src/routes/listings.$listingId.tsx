@@ -147,8 +147,57 @@ function RouteComponent() {
 							<CardDescription className="text-base leading-relaxed">
 								{listing.description}
 							</CardDescription>
+
+							{/* Service Type Badges */}
+							{(listing.inCall || listing.outCall) && (
+								<div className="mt-4 flex gap-2">
+									{listing.inCall && (
+										<span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 font-medium text-blue-700 text-sm">
+											In Call
+										</span>
+									)}
+									{listing.outCall && (
+										<span className="inline-flex items-center rounded-full bg-green-50 px-3 py-1 font-medium text-green-700 text-sm">
+											Out Call
+										</span>
+									)}
+								</div>
+							)}
 						</CardContent>
 					</Card>
+
+					{/* Pricing Section */}
+					{listing.pricing && listing.pricing.length > 0 && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-lg">Pricing</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="grid gap-3 sm:grid-cols-2">
+									{listing.pricing
+										.filter((price) => price.price > 0)
+										.map((price) => (
+											<div
+												key={price.duration}
+												className="flex items-center justify-between rounded-lg p-3"
+											>
+												<span className="font-medium capitalize">
+													{price.duration === "15min" && "15 minutes"}
+													{price.duration === "30min" && "30 minutes"}
+													{price.duration === "1h" && "1 hour"}
+													{price.duration === "2h" && "2 hours"}
+													{price.duration === "3h" && "3 hours"}
+													{price.duration === "24h" && "24 hours"}
+												</span>
+												<span className="font-semibold text-lg text-primary">
+													£{price.price}
+												</span>
+											</div>
+										))}
+								</div>
+							</CardContent>
+						</Card>
+					)}
 
 					{/* Phone Reveal Section */}
 					<PhoneRevealButton listingId={listing.id} />

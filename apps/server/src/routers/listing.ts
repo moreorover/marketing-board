@@ -4,6 +4,7 @@ import z from "zod";
 import {db} from "@/db";
 import {listing} from "@/db/schema/listing";
 import {listingPhoto} from "@/db/schema/listing-photo";
+import {listingPricing} from "@/db/schema/listing-pricing";
 import {phoneView} from "@/db/schema/phone-view";
 import {generateSignedImageUrl, generateSignedImageUrls} from "@/lib/spaces";
 import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
@@ -17,6 +18,8 @@ export const listingRouter = router({
 				location: true,
 				city: true,
 				postcodeOutcode: true,
+				inCall: true,
+				outCall: true,
 			},
 			with: {
 				images: {
@@ -46,6 +49,8 @@ export const listingRouter = router({
 					city: listingItem.city,
 					image: mainImageUrl,
 					postcodeOutcode: listingItem.postcodeOutcode,
+					inCall: listingItem.inCall,
+					outCall: listingItem.outCall,
 				};
 			}),
 		);
@@ -61,6 +66,8 @@ export const listingRouter = router({
 				location: true,
 				city: true,
 				postcodeOutcode: true,
+				inCall: true,
+				outCall: true,
 			},
 			where: eq(listing.userId, ctx.session.user.id),
 			with: {
@@ -91,6 +98,8 @@ export const listingRouter = router({
 					city: listingItem.city,
 					image: mainImageUrl,
 					postcodeOutcode: listingItem.postcodeOutcode,
+					inCall: listingItem.inCall,
+					outCall: listingItem.outCall,
 				};
 			}),
 		);
@@ -109,6 +118,9 @@ export const listingRouter = router({
 				with: {
 					images: {
 						orderBy: [desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt)],
+					},
+					pricing: {
+						columns: { duration: true, price: true },
 					},
 				},
 			});
@@ -147,11 +159,16 @@ export const listingRouter = router({
 					location: true,
 					description: true,
 					postcodeOutcode: true,
+					inCall: true,
+					outCall: true,
 				},
 				where: eq(listing.id, input.listingId),
 				with: {
 					images: {
 						orderBy: [desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt)],
+					},
+					pricing: {
+						columns: { duration: true, price: true },
 					},
 				},
 			});
@@ -191,6 +208,14 @@ export const listingRouter = router({
 				city: z.string().min(1),
 				postcodeOutcode: z.string().min(1, "Postcode Outcode is required"),
 				postcodeIncode: z.string().min(1, "Postcode Incode is required"),
+				inCall: z.boolean(),
+				outCall: z.boolean(),
+				pricing: z.array(
+					z.object({
+						duration: z.string(),
+						price: z.number().min(0),
+					}),
+				),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -205,11 +230,24 @@ export const listingRouter = router({
 					phone: input.phone,
 					postcodeOutcode: input.postcodeOutcode,
 					postcodeIncode: input.postcodeIncode,
+					inCall: input.inCall,
+					outCall: input.outCall,
 					userId: ctx.session.user.id,
 				})
 				.returning();
 
 			const listingId = createdListing[0].id;
+
+			// Create pricing entries for non-zero prices
+			const pricingEntries = input.pricing.map(({ duration, price }) => ({
+				listingId,
+				duration,
+				price,
+			}));
+
+			if (pricingEntries.length > 0) {
+				await db.insert(listingPricing).values(pricingEntries);
+			}
 
 			await db
 				.update(listingPhoto)
@@ -235,6 +273,14 @@ export const listingRouter = router({
 				city: z.string().min(1),
 				postcodeOutcode: z.string().min(1, "Postcode Outcode is required"),
 				postcodeIncode: z.string().min(1, "Postcode Incode is required"),
+				inCall: z.boolean(),
+				outCall: z.boolean(),
+				pricing: z.array(
+					z.object({
+						duration: z.string(),
+						price: z.number().min(0),
+					}),
+				),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -258,7 +304,7 @@ export const listingRouter = router({
 			}
 
 			// Update listing details
-			return db
+			await db
 				.update(listing)
 				.set({
 					title: input.title,
@@ -268,8 +314,28 @@ export const listingRouter = router({
 					city: input.city,
 					postcodeOutcode: input.postcodeOutcode,
 					postcodeIncode: input.postcodeIncode,
+					inCall: input.inCall,
+					outCall: input.outCall,
 				})
 				.where(eq(listing.id, input.id));
+
+			// Delete existing pricing
+			await db
+				.delete(listingPricing)
+				.where(eq(listingPricing.listingId, input.id));
+
+			// Create new pricing entries for non-zero prices
+			const pricingEntries = input.pricing.map(({ duration, price }) => ({
+				listingId: input.id,
+				duration,
+				price,
+			}));
+
+			if (pricingEntries.length > 0) {
+				await db.insert(listingPricing).values(pricingEntries);
+			}
+
+			return { success: true };
 		}),
 
 	delete: protectedProcedure

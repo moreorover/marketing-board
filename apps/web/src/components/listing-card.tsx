@@ -11,6 +11,8 @@ interface ListingCardProps {
 		image: string | null;
 		city: string;
 		postcodeOutcode: string;
+		inCall: boolean;
+		outCall: boolean;
 	};
 	showActions?: boolean;
 	onDelete?: (id: string) => void;
@@ -69,6 +71,20 @@ export function ListingCard({
 					<p className="text-muted-foreground text-sm">
 						📍 {listing.postcodeOutcode}, {listing.city}, {listing.location}
 					</p>
+				)}
+				{(listing.inCall || listing.outCall) && (
+					<div className="mt-2 flex gap-2">
+						{listing.inCall && (
+							<span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 font-medium text-blue-700 text-xs">
+								In Call
+							</span>
+						)}
+						{listing.outCall && (
+							<span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 font-medium text-green-700 text-xs">
+								Out Call
+							</span>
+						)}
+					</div>
 				)}
 			</CardContent>
 		</Card>
