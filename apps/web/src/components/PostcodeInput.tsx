@@ -21,7 +21,6 @@ interface PostcodeInputProps {
 			location: string;
 			postcodeOutcode: string;
 			postcodeIncode: string;
-			isValid: boolean;
 		} | null,
 	) => void;
 	disabled?: boolean;
@@ -51,7 +50,6 @@ export function PostcodeInput({
 				location: postcodeData.admin_ward,
 				postcodeOutcode: postcodeData.outcode,
 				postcodeIncode: postcodeData.incode,
-				isValid: isSuccess,
 			});
 		} else {
 			onUpdate(null);

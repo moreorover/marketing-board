@@ -58,7 +58,6 @@ export function PostcodeDrawer({
 				location: string;
 				postcodeOutcode: string;
 				postcodeIncode: string;
-				isValid: boolean;
 			} | null,
 		) => {
 			setLocationData(data);
