@@ -1,8 +1,8 @@
-import { Star, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { PhotoDropzone } from "@/components/PhotoDropzone";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import {Star, Trash2} from "lucide-react";
+import {useState} from "react";
+import {PhotoDropzone} from "@/components/PhotoDropzone";
+import {Button} from "@/components/ui/button";
+import {Label} from "@/components/ui/label";
 
 export type ListingPhoto = {
 	id: string;
@@ -37,9 +37,23 @@ export function PhotoManager({
 		mainPhotoId,
 	);
 
-	const handleMainPhotoChange = (photoId: string) => {
-		setLocalMainPhotoId(photoId);
-		onMainPhotoChange(photoId);
+	const handleMainPhotoChange = (photoId: string | undefined) => {
+		if (photoId) {
+			setLocalMainPhotoId(photoId);
+			onMainPhotoChange(photoId);
+		} else {
+			if (photos && photos.length > 0) {
+				setLocalMainPhotoId(photos[0].id);
+				onMainPhotoChange(photoId);
+			}
+		}
+	};
+
+	const handlePhotoDelete = (photoId: string) => {
+		if (photoId === localMainPhotoId) {
+			handleMainPhotoChange(undefined);
+		}
+		onPhotoDelete(photoId);
 	};
 
 	return (
@@ -98,7 +112,7 @@ export function PhotoManager({
 											variant="destructive"
 											size="sm"
 											onClick={() => {
-												onPhotoDelete(photo.id);
+												handlePhotoDelete(photo.id);
 											}}
 											disabled={isSubmitting}
 										>
