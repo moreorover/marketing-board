@@ -1,18 +1,12 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, useRouteContext } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { toast } from "sonner";
-import { ListingForm, type ListingFormData } from "@/components/ListingForm";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {createFileRoute} from "@tanstack/react-router";
+import {useEffect} from "react";
+import {toast} from "sonner";
+import {ListingForm, type ListingFormData} from "@/components/ListingForm";
 import Loader from "@/components/loader";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
-import { trpc } from "@/utils/trpc";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {useAuth} from "@/hooks/useAuth";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute(
 	"/_authenticated/listings/$listingId/edit",
@@ -38,6 +32,11 @@ function EditListingRoute() {
 	);
 	const listing = listingQuery.data;
 
+	const photosQuery = useQuery(
+		trpc.listingPhoto.listPhotos.queryOptions({ listingId }),
+	);
+	const photos = photosQuery.data || [];
+
 	// Check if current user owns this listing
 	const isOwner = listing?.userId === user.id;
 
@@ -61,30 +60,8 @@ function EditListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async ({
-		formData,
-		newFiles,
-		keepImages,
-		selectedMainImageUrl,
-		mainImageIsNewFile,
-		mainImageNewFileIndex,
-	}: {
-		formData: ListingFormData;
-		newFiles: { name: string; type: string; data: string }[];
-		keepImages?: string[];
-		selectedMainImageUrl?: string;
-		mainImageIsNewFile?: boolean;
-		mainImageNewFileIndex?: number;
-	}) => {
-		await updateListingMutation.mutateAsync({
-			id: listingId,
-			...formData,
-			keepImages,
-			newFiles: newFiles.length > 0 ? newFiles : undefined,
-			newMainImageUrl: selectedMainImageUrl,
-			mainImageIsNewFile,
-			mainImageNewFileIndex,
-		});
+	const handleSubmit = (formData: ListingFormData) => {
+		updateListingMutation.mutate({ id: listingId, ...formData });
 	};
 
 	const handleCancel = () => {
@@ -117,18 +94,29 @@ function EditListingRoute() {
 				</CardHeader>
 				<CardContent>
 					<ListingForm
+						photos={photos}
+						listingId={listingId}
 						initialData={{
 							title: listing.title,
 							description: listing.description,
 							location: listing.location,
 							phone: listing.phone,
+							city: listing.city,
+							postcode: listing.postcode,
 						}}
-						initialImages={listing.images || []}
+						onUpload={() => {
+							photosQuery.refetch();
+						}}
+						onPhotoDelete={() => {
+							photosQuery.refetch();
+						}}
+						onMainPhotoChange={() => {
+							photosQuery.refetch();
+						}}
 						onSubmit={handleSubmit}
 						onCancel={handleCancel}
 						submitButtonText="Update Listing"
 						isSubmitting={updateListingMutation.isPending}
-						mode="edit"
 					/>
 				</CardContent>
 			</Card>

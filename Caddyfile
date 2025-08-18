@@ -1,21 +1,18 @@
-{
-    # optional: nicer compression defaults
-    encoders gzip zstd
-    # increase the header read timeout if you expect big headers (JWTs etc.)
-    # servers {
-    #   read_header_timeout 10s
-    # }
-}
-
 # HTTP -> HTTPS
 :80 {
     redir https://{host}{uri} permanent
 }
 
 {$DOMAIN:localhost} {
-    # If you’re using Cloudflare Origin Certs (recommended behind CF), keep this line.
+    # If you're using Cloudflare Origin Certs (recommended behind CF), keep this line.
     # Otherwise, remove it and let Caddy manage ACME/DNS-01.
     # tls /etc/certs/origin.pem /etc/certs/origin.key
+
+    # Global logging (moved outside handle blocks)
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
 
     # ---------- Cloudflare allowlist ----------
     @cloudflare {
@@ -41,7 +38,7 @@
                     # preserve real client IP from CF
                     header_up X-Real-IP {http.request.header.CF-Connecting-IP}
                     header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-                    header_up X-Forwarded-Proto {scheme}
+                    # Removed X-Forwarded-Proto - Caddy handles this automatically
                 }
             }
 
@@ -50,7 +47,7 @@
                 reverse_proxy server:3000 {
                     header_up X-Real-IP {http.request.header.CF-Connecting-IP}
                     header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-                    header_up X-Forwarded-Proto {scheme}
+                    # Removed X-Forwarded-Proto - Caddy handles this automatically
                 }
             }
 
@@ -59,19 +56,13 @@
                 reverse_proxy web:80 {
                     header_up X-Real-IP {http.request.header.CF-Connecting-IP}
                     header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-                    header_up X-Forwarded-Proto {scheme}
+                    # Removed X-Forwarded-Proto - Caddy handles this automatically
                 }
             }
         }
 
         # Compression
         encode gzip zstd
-
-        # Logging
-        log {
-            output file /var/log/caddy/access.log
-            format json
-        }
     }
 
     # Anything *not* from Cloudflare => 403

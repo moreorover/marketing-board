@@ -1,11 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
-import { ListingCard } from "@/components/listing-card";
+import {useQuery} from "@tanstack/react-query";
+import {createFileRoute, Link} from "@tanstack/react-router";
+import {Loader2} from "lucide-react";
+import {ListingCard} from "@/components/listing-card";
 import Loader from "@/components/loader";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent} from "@/components/ui/card";
+import {cn} from "@/lib/utils";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute("/")({
 	loader: async ({ context: { trpc, queryClient } }) => {
@@ -18,6 +19,9 @@ export const Route = createFileRoute("/")({
 
 function HomeComponent() {
 	const healthCheck = useQuery(trpc.healthCheck.queryOptions());
+	const postcodesHealthCheck = useQuery(
+		trpc.postcodes.healthCheck.queryOptions(),
+	);
 	const listings = useQuery(trpc.listing.getPublic.queryOptions());
 
 	return (
@@ -55,18 +59,40 @@ function HomeComponent() {
 
 			<footer className="border-t bg-muted/50 py-4">
 				<div className="container mx-auto max-w-3xl px-4">
-					<div className="flex items-center gap-2">
-						<span className="text-muted-foreground text-sm">API Status:</span>
-						<div
-							className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-						/>
-						<span className="text-muted-foreground text-sm">
-							{healthCheck.isLoading
-								? "Checking..."
-								: healthCheck.data
-									? "Connected"
-									: "Disconnected"}
-						</span>
+					<div className="flex items-center justify-between gap-4">
+						<span className="text-muted-foreground text-xs">API Status</span>
+
+						<div className="flex items-center gap-4">
+							{/* Main API Status */}
+							<div className="flex items-center gap-1.5">
+								<div
+									className={cn(
+										"h-1.5 w-1.5 rounded-full transition-colors",
+										healthCheck.isLoading && "animate-pulse bg-yellow-500",
+										healthCheck.data && "bg-green-500",
+										!healthCheck.data && !healthCheck.isLoading && "bg-red-500",
+									)}
+								/>
+								<span className="text-muted-foreground text-xs">API</span>
+							</div>
+
+							{/* Postcodes API Status */}
+							<div className="flex items-center gap-1.5">
+								<div
+									className={cn(
+										"h-1.5 w-1.5 rounded-full transition-colors",
+										postcodesHealthCheck.isLoading &&
+											"animate-pulse bg-yellow-500",
+										postcodesHealthCheck.data?.status === "healthy" &&
+											"bg-green-500",
+										postcodesHealthCheck.data?.status === "unhealthy" &&
+											"bg-red-500",
+										postcodesHealthCheck.error && "bg-red-500",
+									)}
+								/>
+								<span className="text-muted-foreground text-xs">Postcodes</span>
+							</div>
+						</div>
 					</div>
 				</div>
 			</footer>
