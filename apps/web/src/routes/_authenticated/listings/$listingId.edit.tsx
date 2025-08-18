@@ -104,6 +104,7 @@ function EditListingRoute() {
 							city: listing.city,
 							postcodeOutcode: listing.postcodeOutcode,
 							postcodeIncode: listing.postcodeIncode,
+							pricing: listing.pricing,
 						}}
 						onUpload={() => {
 							photosQuery.refetch();

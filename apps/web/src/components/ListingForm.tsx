@@ -20,14 +20,12 @@ const FormSchema = z.object({
 	postcodeIncode: z.string().min(1), // Will be auto-filled from incode
 	inCall: z.boolean(),
 	outCall: z.boolean(),
-	pricing: z.object({
-		"15min": z.number().min(0),
-		"30min": z.number().min(0),
-		"1h": z.number().min(0),
-		"2h": z.number().min(0),
-		"3h": z.number().min(0),
-		"24h": z.number().min(0),
-	}),
+	pricing: z.array(
+		z.object({
+			duration: z.string(),
+			price: z.number().min(0),
+		}),
+	),
 });
 
 export type ListingFormData = z.infer<typeof FormSchema>;
@@ -72,14 +70,14 @@ export function ListingForm({
 			postcodeIncode: initialData.postcodeIncode || "",
 			inCall: initialData.inCall || false,
 			outCall: initialData.outCall || false,
-			pricing: initialData.pricing || {
-				"15min": 0,
-				"30min": 0,
-				"1h": 0,
-				"2h": 0,
-				"3h": 0,
-				"24h": 0,
-			},
+			pricing: initialData.pricing || [
+				{ duration: "15min", price: 0 },
+				{ duration: "30min", price: 0 },
+				{ duration: "1h", price: 0 },
+				{ duration: "2h", price: 0 },
+				{ duration: "3h", price: 0 },
+				{ duration: "24h", price: 0 },
+			],
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
@@ -327,8 +325,8 @@ export function ListingForm({
 						{ duration: "2h", label: "2 hours" },
 						{ duration: "3h", label: "3 hours" },
 						{ duration: "24h", label: "24 hours" },
-					].map(({ duration, label }) => (
-						<form.Field key={duration} name={`pricing.${duration}` as any}>
+					].map(({ duration, label }, index) => (
+						<form.Field key={duration} name={`pricing.${index}.price` as any}>
 							{({ name, state, handleChange, handleBlur }) => (
 								<div>
 									<Label htmlFor={name} className="text-sm">
@@ -342,11 +340,11 @@ export function ListingForm({
 											id={name}
 											name={name}
 											type="number"
-											value={state.value}
+											value={state.value || 0}
 											onBlur={handleBlur}
 											onChange={(e) => {
-												const value = e.target.value;
-												handleChange(Number(value) || 0);
+												const value = Number(e.target.value) || 0;
+												handleChange(value as any);
 											}}
 											placeholder="0"
 											disabled={isSubmitting}
