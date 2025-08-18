@@ -1,15 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { ListingForm, type ListingFormData } from "@/components/ListingForm";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {createFileRoute} from "@tanstack/react-router";
+import {toast} from "sonner";
+import {ListingForm, type ListingFormData} from "@/components/ListingForm";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/listings/new")({
 	component: NewListingRoute,
@@ -21,7 +15,7 @@ function NewListingRoute() {
 	const unusedPhotosQuery = useQuery(
 		trpc.listing.listUnusedPhotos.queryOptions(),
 	);
-	const unusedPhotos = unusedPhotosQuery.data;
+	const unusedPhotos = unusedPhotosQuery.data || [];
 
 	const createMutation = useMutation(
 		trpc.listing.create.mutationOptions({
@@ -47,13 +41,12 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = async ({
+	const handleSubmit = ({
 		formData,
 		mainPhotoId,
 	}: {
 		formData: ListingFormData;
-		photoIds?: string[];
-		mainPhotoId?: string;
+		mainPhotoId: string;
 	}) => {
 		createMutation.mutate({
 			...formData,
