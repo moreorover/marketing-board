@@ -6,18 +6,12 @@ import {Button} from "@/components/ui/button";
 import {Label} from "@/components/ui/label";
 import {trpc} from "@/utils/trpc";
 
-export type ListingPhoto = {
-	id: string;
-	userId: string | null;
-	listingId: string | null;
-	isMain: boolean;
-	objectKey: string;
-	uploadedAt: string;
-	signedUrl: string;
-};
-
 interface PhotoManagerProps {
-	photos: ListingPhoto[];
+	photos: {
+		id: string;
+		isMain: boolean;
+		signedUrl: string;
+	}[];
 	listingId: string | null;
 	onUpload: () => void;
 	onPhotoDelete: () => void;

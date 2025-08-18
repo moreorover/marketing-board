@@ -2,7 +2,7 @@ import {useForm} from "@tanstack/react-form";
 import {Loader2} from "lucide-react";
 import {useCallback} from "react";
 import z from "zod";
-import {type ListingPhoto, PhotoManager} from "@/components/PhotoManager";
+import {PhotoManager} from "@/components/PhotoManager";
 import {PostcodeDrawer} from "@/components/PostcodeDrawer";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -21,7 +21,11 @@ const FormSchema = z.object({
 export type ListingFormData = z.infer<typeof FormSchema>;
 
 interface ListingFormProps {
-	photos: ListingPhoto[];
+	photos: {
+		id: string;
+		isMain: boolean;
+		signedUrl: string;
+	}[];
 	initialData?: Partial<ListingFormData>;
 	listingId: string | null;
 	onSubmit: (formData: ListingFormData) => void;
