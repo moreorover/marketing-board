@@ -1,5 +1,5 @@
 import {TRPCError} from "@trpc/server";
-import {and, eq, isNull} from "drizzle-orm";
+import {and, asc, desc, eq, isNull} from "drizzle-orm";
 import z from "zod";
 import {db} from "@/db";
 import {type ListingPhoto, listingPhoto} from "@/db/schema/listing-photo";
@@ -75,13 +75,15 @@ export const listingPhotoRouter = router({
 				.from(listingPhoto)
 				.where(
 					and(eq(listingPhoto.userId, ctx.session.user.id), whereCondition),
-				);
+				)
+				.orderBy(desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt));
 
 			const result = await Promise.all(
 				existingPhotos.map(async (photo) => {
 					const signedUrl = await generateSignedImageUrl(photo.objectKey, 3600);
 					return {
-						...photo,
+						id: photo.id,
+						isMain: photo.isMain,
 						signedUrl,
 					};
 				}),

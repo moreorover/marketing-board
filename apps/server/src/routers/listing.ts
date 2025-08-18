@@ -1,11 +1,11 @@
 import {TRPCError} from "@trpc/server";
-import {and, eq, isNull} from "drizzle-orm";
+import {and, asc, desc, eq, isNull} from "drizzle-orm";
 import z from "zod";
 import {db} from "@/db";
 import {listing} from "@/db/schema/listing";
 import {listingPhoto} from "@/db/schema/listing-photo";
 import {phoneView} from "@/db/schema/phone-view";
-import {generateSignedImageUrl, generateSignedImageUrls,} from "@/lib/spaces";
+import {generateSignedImageUrl, generateSignedImageUrls} from "@/lib/spaces";
 import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
 
 export const listingRouter = router({
@@ -103,7 +103,9 @@ export const listingRouter = router({
 					eq(listing.userId, ctx.session.user.id),
 				),
 				with: {
-					images: {},
+					images: {
+						orderBy: [desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt)],
+					},
 				},
 			});
 
@@ -143,7 +145,9 @@ export const listingRouter = router({
 				},
 				where: eq(listing.id, input.listingId),
 				with: {
-					images: {},
+					images: {
+						orderBy: [desc(listingPhoto.isMain), asc(listingPhoto.uploadedAt)],
+					},
 				},
 			});
 
