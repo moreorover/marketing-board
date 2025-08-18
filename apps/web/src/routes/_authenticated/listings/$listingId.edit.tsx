@@ -104,6 +104,8 @@ function EditListingRoute() {
 							city: listing.city,
 							postcodeOutcode: listing.postcodeOutcode,
 							postcodeIncode: listing.postcodeIncode,
+							inCall: listing.inCall,
+							outCall: listing.outCall,
 							pricing: listing.pricing,
 						}}
 						onUpload={() => {
