@@ -1,5 +1,6 @@
-import { listingRouter } from "@/routers/listing";
-import { protectedProcedure, publicProcedure, router } from "../lib/trpc";
+import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
+import {listingRouter} from "@/routers/listing";
+import {listingPhotoRouter} from "@/routers/listing-photo";
 import {postcodesRouter} from "@/routers/postcodes";
 
 export const appRouter = router({
@@ -13,6 +14,7 @@ export const appRouter = router({
 		};
 	}),
 	listing: listingRouter,
-  postcodes: postcodesRouter,
+	listingPhoto: listingPhotoRouter,
+	postcodes: postcodesRouter,
 });
 export type AppRouter = typeof appRouter;

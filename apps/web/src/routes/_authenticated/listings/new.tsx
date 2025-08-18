@@ -13,7 +13,7 @@ function NewListingRoute() {
 	const navigate = Route.useNavigate();
 
 	const unusedPhotosQuery = useQuery(
-		trpc.listing.listUnusedPhotos.queryOptions(),
+		trpc.listingPhoto.listUnusedPhotos.queryOptions(),
 	);
 	const unusedPhotos = unusedPhotosQuery.data || [];
 
@@ -29,8 +29,20 @@ function NewListingRoute() {
 		}),
 	);
 
+	const setMainListingPhotoMutation = useMutation(
+		trpc.listingPhoto.setMainPhoto.mutationOptions({
+			onSuccess: () => {
+				toast.success("Main listing photo updated successfully!");
+				unusedPhotosQuery.refetch();
+			},
+			onError: () => {
+				toast.error("Failed to update main listing photo.");
+			},
+		}),
+	);
+
 	const deleteListingPhotoMutation = useMutation(
-		trpc.listing.deletePhoto.mutationOptions({
+		trpc.listingPhoto.deletePhoto.mutationOptions({
 			onSuccess: () => {
 				toast.success("Listing photo deleted successfully!");
 				unusedPhotosQuery.refetch();
@@ -41,17 +53,8 @@ function NewListingRoute() {
 		}),
 	);
 
-	const handleSubmit = ({
-		formData,
-		mainPhotoId,
-	}: {
-		formData: ListingFormData;
-		mainPhotoId: string;
-	}) => {
-		createMutation.mutate({
-			...formData,
-			mainPhotoId,
-		});
+	const handleSubmit = (formData: ListingFormData) => {
+		createMutation.mutate(formData);
 	};
 
 	const handleCancel = () => {
@@ -68,6 +71,7 @@ function NewListingRoute() {
 				<CardContent>
 					<ListingForm
 						photos={unusedPhotos}
+						listingId={null}
 						onSubmit={handleSubmit}
 						onUpload={() => {
 							unusedPhotosQuery.refetch();
@@ -75,10 +79,12 @@ function NewListingRoute() {
 						onPhotoDelete={(listingPhotoId) => {
 							deleteListingPhotoMutation.mutate({ listingPhotoId });
 						}}
+						onMainPhotoChange={(listingPhotoId) => {
+							setMainListingPhotoMutation.mutate({ listingPhotoId });
+						}}
 						onCancel={handleCancel}
 						submitButtonText="Create Listing"
 						isSubmitting={createMutation.isPending}
-						mode="create"
 					/>
 				</CardContent>
 			</Card>

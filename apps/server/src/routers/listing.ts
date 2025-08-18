@@ -1,124 +1,20 @@
-import { TRPCError } from "@trpc/server";
-import { and, eq, isNull } from "drizzle-orm";
+import {TRPCError} from "@trpc/server";
+import {and, eq, isNull} from "drizzle-orm";
 import z from "zod";
-import { db } from "@/db";
-import { listing } from "@/db/schema/listing";
-import { type ListingPhoto, listingPhoto } from "@/db/schema/listing-photo";
-import { phoneView } from "@/db/schema/phone-view";
+import {db} from "@/db";
+import {listing} from "@/db/schema/listing";
+import {listingPhoto} from "@/db/schema/listing-photo";
+import {phoneView} from "@/db/schema/phone-view";
 import {
-	deleteImage,
-	extractKeyFromUrl,
-	generateSignedImageUrl,
-	generateSignedImageUrls,
-	uploadImage,
+  deleteImage,
+  extractKeyFromUrl,
+  generateSignedImageUrl,
+  generateSignedImageUrls,
+  uploadImage,
 } from "@/lib/spaces";
-import { protectedProcedure, publicProcedure, router } from "@/lib/trpc";
+import {protectedProcedure, publicProcedure, router} from "@/lib/trpc";
 
 export const listingRouter = router({
-	uploadPhotos: protectedProcedure
-		.input(
-			z.object({
-				photos: z.array(
-					z.object({
-						name: z.string(),
-						type: z.string(),
-						data: z.string(),
-					}),
-				),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			const existingUnusedPhotos = await db
-				.select()
-				.from(listingPhoto)
-				.where(
-					and(
-						eq(listingPhoto.userId, ctx.session.user.id),
-						isNull(listingPhoto.listingId),
-					),
-				);
-
-			if (existingUnusedPhotos.length >= 5) {
-				throw new TRPCError({
-					code: "BAD_REQUEST",
-					message: "Already 5 photos uploaded.",
-					cause: "Up to 5 photos allowed.",
-				});
-			}
-
-			const savedListingPhotos: ListingPhoto[] = [];
-
-			for (const photo of input.photos) {
-				const buffer = Buffer.from(photo.data, "base64");
-				const objectKey = await uploadImage(buffer, ctx.session.user.id);
-
-				const savedListingPhoto = await db
-					.insert(listingPhoto)
-					.values({
-						objectKey: objectKey,
-						userId: ctx.session.user.id,
-					})
-					.returning();
-
-				savedListingPhotos.push(savedListingPhoto[0]);
-			}
-
-			return savedListingPhotos;
-		}),
-
-	listUnusedPhotos: protectedProcedure.query(async ({ ctx }) => {
-		const existingUnusedPhotos: ListingPhoto[] = await db
-			.select()
-			.from(listingPhoto)
-			.where(
-				and(
-					eq(listingPhoto.userId, ctx.session.user.id),
-					isNull(listingPhoto.listingId),
-				),
-			);
-
-		const result = await Promise.all(
-			existingUnusedPhotos.map(async (photo) => {
-				const signedUrl = await generateSignedImageUrl(photo.objectKey, 3600);
-				return {
-					...photo,
-					signedUrl,
-				};
-			}),
-		);
-
-		return result;
-	}),
-
-	deletePhoto: protectedProcedure
-		.input(z.object({ listingPhotoId: z.string() }))
-		.mutation(async ({ ctx, input }) => {
-			// Verify the photo belongs to the user
-			const photo = await db.query.listingPhoto.findFirst({
-				where: and(
-					eq(listingPhoto.id, input.listingPhotoId),
-					eq(listingPhoto.userId, ctx.session.user.id),
-				),
-			});
-
-			if (!photo) {
-				throw new TRPCError({
-					code: "NOT_FOUND",
-					message: "Photo not found.",
-				});
-			}
-
-			// Delete from R2
-			await deleteImage(photo.objectKey);
-
-			// Delete from database
-			await db
-				.delete(listingPhoto)
-				.where(eq(listingPhoto.id, input.listingPhotoId));
-
-			return { success: true };
-		}),
-
 	getPublic: publicProcedure.query(async () => {
 		const listingsWithMainImage = await db.query.listing.findMany({
 			columns: {
@@ -291,7 +187,6 @@ export const listingRouter = router({
 				phone: z.string().min(13).max(13).startsWith("+44"),
 				city: z.string().min(1),
 				postcode: z.string().min(1, "Postcode is required"),
-				mainPhotoId: z.string(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -318,16 +213,6 @@ export const listingRouter = router({
 					and(
 						eq(listingPhoto.userId, ctx.session.user.id),
 						isNull(listingPhoto.listingId),
-					),
-				);
-
-			await db
-				.update(listingPhoto)
-				.set({ isMain: true })
-				.where(
-					and(
-						eq(listingPhoto.id, input.mainPhotoId),
-						eq(listingPhoto.listingId, listingId),
 					),
 				);
 

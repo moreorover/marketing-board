@@ -1,5 +1,4 @@
 import {Star, Trash2} from "lucide-react";
-import {useState} from "react";
 import {PhotoDropzone} from "@/components/PhotoDropzone";
 import {Button} from "@/components/ui/button";
 import {Label} from "@/components/ui/label";
@@ -15,53 +14,28 @@ export type ListingPhoto = {
 };
 
 interface PhotoManagerProps {
-	photos: ListingPhoto[] | undefined;
+	photos: ListingPhoto[];
+	listingId: string | null;
 	onUpload: () => void;
 	onPhotoDelete: (listingPhotoId: string) => void;
-	onMainPhotoChange: (photoId: string | undefined) => void;
-	mode: "create" | "edit";
+	onMainPhotoChange: (photoId: string) => void;
 	isSubmitting?: boolean;
-	mainPhotoId?: string;
 }
 
 export function PhotoManager({
 	photos,
+	listingId,
 	onUpload,
 	onPhotoDelete,
 	onMainPhotoChange,
-	mode,
 	isSubmitting = false,
-	mainPhotoId,
 }: PhotoManagerProps) {
-	const [localMainPhotoId, setLocalMainPhotoId] = useState<string | undefined>(
-		mainPhotoId,
-	);
-
-	const handleMainPhotoChange = (photoId: string | undefined) => {
-		if (photoId) {
-			setLocalMainPhotoId(photoId);
-			onMainPhotoChange(photoId);
-		} else {
-			if (photos && photos.length > 0) {
-				setLocalMainPhotoId(photos[0].id);
-				onMainPhotoChange(photoId);
-			}
-		}
-	};
-
-	const handlePhotoDelete = (photoId: string) => {
-		if (photoId === localMainPhotoId) {
-			handleMainPhotoChange(undefined);
-		}
-		onPhotoDelete(photoId);
-	};
-
 	return (
 		<div className="space-y-6">
 			{/* Image Upload */}
 			<div>
-				<Label>{mode === "edit" ? "Add More Images" : "Images"}</Label>
-				<PhotoDropzone maxFiles={5} onUpload={onUpload} />
+				<Label>Images</Label>
+				<PhotoDropzone maxFiles={5} onUpload={onUpload} listingId={listingId} />
 			</div>
 
 			{/* Photo Management */}
@@ -70,8 +44,6 @@ export function PhotoManager({
 					<Label className="font-medium text-sm">Manage Photos</Label>
 					<div className="mt-3 space-y-3">
 						{photos.map((photo) => {
-							const isMain = localMainPhotoId === photo.id;
-
 							return (
 								<div
 									key={photo.id}
@@ -96,15 +68,15 @@ export function PhotoManager({
 									<div className="flex gap-2">
 										<Button
 											type="button"
-											variant={isMain ? "default" : "outline"}
+											variant={photo.isMain ? "default" : "outline"}
 											size="sm"
 											onClick={() => {
-												handleMainPhotoChange(photo.id);
+												onMainPhotoChange(photo.id);
 											}}
-											disabled={isMain || isSubmitting}
+											disabled={photo.isMain || isSubmitting}
 										>
 											<Star className="mr-1 h-4 w-4" />
-											{isMain ? "Main" : "Set as Main"}
+											{photo.isMain ? "Main" : "Set as Main"}
 										</Button>
 
 										<Button
@@ -112,7 +84,7 @@ export function PhotoManager({
 											variant="destructive"
 											size="sm"
 											onClick={() => {
-												handlePhotoDelete(photo.id);
+												onPhotoDelete(photo.id);
 											}}
 											disabled={isSubmitting}
 										>

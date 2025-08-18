@@ -7,16 +7,18 @@ import {trpc} from "@/utils/trpc";
 interface Props {
 	maxFiles: number;
 	onUpload: () => void;
+	listingId: string | null;
 	disabled?: boolean;
 }
 
 export function PhotoDropzone({
 	maxFiles = 5,
 	onUpload,
+	listingId,
 	disabled = false,
 }: Props) {
 	const uploadMutation = useMutation(
-		trpc.listing.uploadPhotos.mutationOptions({
+		trpc.listingPhoto.uploadPhotos.mutationOptions({
 			onSuccess: (data) => {
 				toast.success(`${data.length} photos uploaded!`);
 				onUpload();
@@ -29,7 +31,7 @@ export function PhotoDropzone({
 
 	const handleDrop = async (files: File[]) => {
 		const photos = await convertFilesToBase64(files);
-		uploadMutation.mutate({ photos });
+		uploadMutation.mutate({ photos, listingId });
 	};
 
 	return (
