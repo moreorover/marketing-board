@@ -60,30 +60,6 @@ function EditListingRoute() {
 		}),
 	);
 
-	const setMainListingPhotoMutation = useMutation(
-		trpc.listingPhoto.setMainPhoto.mutationOptions({
-			onSuccess: () => {
-				toast.success("Main listing photo updated successfully!");
-				photosQuery.refetch();
-			},
-			onError: () => {
-				toast.error("Failed to update main listing photo.");
-			},
-		}),
-	);
-
-	const deleteListingPhotoMutation = useMutation(
-		trpc.listingPhoto.deletePhoto.mutationOptions({
-			onSuccess: () => {
-				toast.success("Listing photo deleted successfully!");
-				photosQuery.refetch();
-			},
-			onError: () => {
-				toast.error("Failed to delete listing photo.");
-			},
-		}),
-	);
-
 	const handleSubmit = (formData: ListingFormData) => {
 		updateListingMutation.mutate({ id: listingId, ...formData });
 	};
@@ -131,11 +107,11 @@ function EditListingRoute() {
 						onUpload={() => {
 							photosQuery.refetch();
 						}}
-						onPhotoDelete={(listingPhotoId) => {
-							deleteListingPhotoMutation.mutate({ listingPhotoId });
+						onPhotoDelete={() => {
+							photosQuery.refetch();
 						}}
-						onMainPhotoChange={(listingPhotoId) => {
-							setMainListingPhotoMutation.mutate({ listingPhotoId });
+						onMainPhotoChange={() => {
+							photosQuery.refetch();
 						}}
 						onSubmit={handleSubmit}
 						onCancel={handleCancel}

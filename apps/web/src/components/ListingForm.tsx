@@ -26,8 +26,8 @@ interface ListingFormProps {
 	listingId: string | null;
 	onSubmit: (formData: ListingFormData) => void;
 	onUpload: () => void;
-	onPhotoDelete: (listingPhotoId: string) => void;
-	onMainPhotoChange: (listingPhotoId: string) => void;
+	onPhotoDelete: () => void;
+	onMainPhotoChange: () => void;
 	onCancel: () => void;
 	submitButtonText: string;
 	isSubmitting?: boolean;

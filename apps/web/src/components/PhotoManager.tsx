@@ -1,7 +1,10 @@
+import {useMutation} from "@tanstack/react-query";
 import {Star, Trash2} from "lucide-react";
+import {toast} from "sonner";
 import {PhotoDropzone} from "@/components/PhotoDropzone";
 import {Button} from "@/components/ui/button";
 import {Label} from "@/components/ui/label";
+import {trpc} from "@/utils/trpc";
 
 export type ListingPhoto = {
 	id: string;
@@ -17,8 +20,8 @@ interface PhotoManagerProps {
 	photos: ListingPhoto[];
 	listingId: string | null;
 	onUpload: () => void;
-	onPhotoDelete: (listingPhotoId: string) => void;
-	onMainPhotoChange: (photoId: string) => void;
+	onPhotoDelete: () => void;
+	onMainPhotoChange: () => void;
 	isSubmitting?: boolean;
 }
 
@@ -30,6 +33,30 @@ export function PhotoManager({
 	onMainPhotoChange,
 	isSubmitting = false,
 }: PhotoManagerProps) {
+	const setMainListingPhotoMutation = useMutation(
+		trpc.listingPhoto.setMainPhoto.mutationOptions({
+			onSuccess: () => {
+				toast.success("Main listing photo updated successfully!");
+				onMainPhotoChange();
+			},
+			onError: () => {
+				toast.error("Failed to update main listing photo.");
+			},
+		}),
+	);
+
+	const deleteListingPhotoMutation = useMutation(
+		trpc.listingPhoto.deletePhoto.mutationOptions({
+			onSuccess: () => {
+				toast.success("Listing photo deleted successfully!");
+				onPhotoDelete();
+			},
+			onError: () => {
+				toast.error("Failed to delete listing photo.");
+			},
+		}),
+	);
+
 	return (
 		<div className="space-y-6">
 			{/* Image Upload */}
@@ -71,7 +98,9 @@ export function PhotoManager({
 											variant={photo.isMain ? "default" : "outline"}
 											size="sm"
 											onClick={() => {
-												onMainPhotoChange(photo.id);
+												setMainListingPhotoMutation.mutate({
+													listingPhotoId: photo.id,
+												});
 											}}
 											disabled={photo.isMain || isSubmitting}
 										>
@@ -84,7 +113,9 @@ export function PhotoManager({
 											variant="destructive"
 											size="sm"
 											onClick={() => {
-												onPhotoDelete(photo.id);
+												deleteListingPhotoMutation.mutate({
+													listingPhotoId: photo.id,
+												});
 											}}
 											disabled={isSubmitting}
 										>
