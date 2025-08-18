@@ -338,7 +338,7 @@ export function ListingForm({
 			{/* Pricing */}
 			<div className="rounded-lg">
 				<h3 className="mb-4 font-semibold text-lg">Pricing</h3>
-				<form.Field name="pricing">
+				<form.Field name="pricing" mode="array">
 					{(field) => (
 						<div className="space-y-4">
 							{field.state.value.map((item, index) => (
@@ -353,7 +353,7 @@ export function ListingForm({
 
 									{/* Price Input */}
 									<div className="max-w-xs flex-1">
-										<form.Field name={`pricing[${index}].price` as any}>
+										<form.Field name={`pricing[${index}].price`}>
 											{(priceField) => (
 												<div className="relative">
 													<span className="-translate-y-1/2 absolute top-1/2 left-3 transform">
@@ -369,15 +369,7 @@ export function ListingForm({
 														onChange={(e) => {
 															const newValue =
 																Number.parseFloat(e.target.value) || 0;
-															priceField.handleChange(newValue as any);
-
-															// Update the main pricing array
-															const newPricing = [...field.state.value];
-															newPricing[index] = {
-																...newPricing[index],
-																price: newValue,
-															};
-															field.handleChange(newPricing);
+															priceField.handleChange(newValue);
 														}}
 														className="w-full rounded-md border py-2 pr-3 pl-8 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
 														placeholder="0.00"
