@@ -13,8 +13,8 @@ export const listing = pgTable(
 		location: text("location").notNull(),
 		city: text("city").notNull(),
 		phone: text("phone").notNull(),
-		inCall: boolean("in_call").default(false),
-		outCall: boolean("out_call").default(false),
+		inCall: boolean("in_call").notNull().default(false),
+		outCall: boolean("out_call").notNull().default(false),
 		userId: text("user_id")
 			.notNull()
 			.references(() => user.id, { onDelete: "cascade" }),

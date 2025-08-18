@@ -18,6 +18,8 @@ export const listingRouter = router({
 				location: true,
 				city: true,
 				postcodeOutcode: true,
+				inCall: true,
+				outCall: true,
 			},
 			with: {
 				images: {
@@ -47,6 +49,8 @@ export const listingRouter = router({
 					city: listingItem.city,
 					image: mainImageUrl,
 					postcodeOutcode: listingItem.postcodeOutcode,
+					inCall: listingItem.inCall,
+					outCall: listingItem.outCall,
 				};
 			}),
 		);
@@ -62,6 +66,8 @@ export const listingRouter = router({
 				location: true,
 				city: true,
 				postcodeOutcode: true,
+				inCall: true,
+				outCall: true,
 			},
 			where: eq(listing.userId, ctx.session.user.id),
 			with: {
@@ -92,6 +98,8 @@ export const listingRouter = router({
 					city: listingItem.city,
 					image: mainImageUrl,
 					postcodeOutcode: listingItem.postcodeOutcode,
+					inCall: listingItem.inCall,
+					outCall: listingItem.outCall,
 				};
 			}),
 		);
