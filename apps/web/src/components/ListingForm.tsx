@@ -1,14 +1,13 @@
-import { useForm } from "@tanstack/react-form";
-import { Loader2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import {useForm} from "@tanstack/react-form";
+import {Loader2} from "lucide-react";
+import {useCallback, useState, useEffect} from "react";
 import z from "zod";
-import { PhotoManager, type ListingPhoto } from "@/components/PhotoManager";
-import { PostcodeDrawer } from "@/components/PostcodeDrawer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { trpc } from "@/utils/trpc";
+import {type ListingPhoto, PhotoManager} from "@/components/PhotoManager";
+import {PostcodeDrawer} from "@/components/PostcodeDrawer";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Textarea} from "@/components/ui/textarea";
 
 const FormSchema = z.object({
 	title: z.string().min(1),
@@ -21,14 +20,12 @@ const FormSchema = z.object({
 
 export type ListingFormData = z.infer<typeof FormSchema>;
 
-
 interface ListingFormProps {
-	photos: ListingPhoto[] | undefined;
+	photos: ListingPhoto[];
 	initialData?: Partial<ListingFormData>;
 	onSubmit: (data: {
 		formData: ListingFormData;
-		photoIds?: string[];
-		mainPhotoId?: string;
+		mainPhotoId: string;
 	}) => Promise<void>;
 	onUpload: () => void;
 	onPhotoDelete: (listingPhotoId: string) => void;
@@ -51,6 +48,24 @@ export function ListingForm({
 }: ListingFormProps) {
 	const [mainPhotoId, setMainPhotoId] = useState<string | undefined>();
 
+	// Auto-set first photo as main if no main photo is set and photos are available
+	useEffect(() => {
+		if (photos.length > 0 && !mainPhotoId) {
+			setMainPhotoId(photos[0].id);
+		}
+	}, [photos, mainPhotoId]);
+
+	// If main photo is deleted, set first available photo as main
+	useEffect(() => {
+		if (mainPhotoId && !photos.find(photo => photo.id === mainPhotoId)) {
+			if (photos.length > 0) {
+				setMainPhotoId(photos[0].id);
+			} else {
+				setMainPhotoId(undefined);
+			}
+		}
+	}, [photos, mainPhotoId]);
+
 	const form = useForm({
 		defaultValues: {
 			title: initialData.title || "",
@@ -62,6 +77,9 @@ export function ListingForm({
 		} as ListingFormData,
 		validators: { onChange: FormSchema },
 		onSubmit: async ({ value }) => {
+			if (!mainPhotoId) {
+				throw new Error("Please select a main photo for your listing");
+			}
 			await onSubmit({
 				formData: value,
 				mainPhotoId,
@@ -235,6 +253,18 @@ export function ListingForm({
 				mainPhotoId={mainPhotoId}
 			/>
 
+			{/* Photo validation message */}
+			{photos.length === 0 && (
+				<div className="text-red-500 text-sm">
+					Please upload at least one photo for your listing.
+				</div>
+			)}
+			{photos.length > 0 && !mainPhotoId && (
+				<div className="text-red-500 text-sm">
+					Please select a main photo for your listing.
+				</div>
+			)}
+
 			{/* Form Actions */}
 			<div className="flex space-x-3">
 				<Button
@@ -249,7 +279,10 @@ export function ListingForm({
 					selector={(state) => [state.canSubmit, state.isSubmitting]}
 				>
 					{([canSubmit, isFormSubmitting]) => (
-						<Button type="submit" disabled={!canSubmit || isSubmitting}>
+						<Button 
+							type="submit" 
+							disabled={!canSubmit || isSubmitting || !mainPhotoId}
+						>
 							{isSubmitting || isFormSubmitting ? (
 								<Loader2 className="h-4 w-4 animate-spin" />
 							) : (
