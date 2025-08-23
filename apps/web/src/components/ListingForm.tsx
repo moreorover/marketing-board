@@ -11,12 +11,12 @@ import {Label} from "@/components/ui/label";
 import {Textarea} from "@/components/ui/textarea";
 
 const defaultPricingTemplate = [
-	{ duration: "15min", price: 0, label: "15 minutes" },
-	{ duration: "30min", price: 0, label: "30 minutes" },
-	{ duration: "1h", price: 0, label: "1 hour" },
-	{ duration: "2h", price: 0, label: "2 hours" },
-	{ duration: "3h", price: 0, label: "3 hours" },
-	{ duration: "24h", price: 0, label: "overnight" },
+	{ duration: "15 minutes", price: 0 },
+	{ duration: "30 minutes", price: 0 },
+	{ duration: "1 hours", price: 0 },
+	{ duration: "2 hours", price: 0 },
+	{ duration: "3 hours", price: 0 },
+	{ duration: "24 hours", price: 0 },
 ];
 
 function mergePricingWithTemplate(
@@ -51,7 +51,6 @@ const FormSchema = z.object({
 		z.object({
 			duration: z.string(),
 			price: z.number().min(0),
-			label: z.string(),
 		}),
 	),
 });
@@ -348,7 +347,7 @@ export function ListingForm({
 								>
 									{/* Duration Label */}
 									<div className="flex-1">
-										<span className="font-medium text-sm">{item.label}</span>
+										<span className="font-medium text-sm">{item.duration}</span>
 									</div>
 
 									{/* Price Input */}
