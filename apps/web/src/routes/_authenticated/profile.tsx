@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { useAuth } from "@/hooks/useAuth";
-import { trpc } from "@/utils/trpc";
+import {useQuery} from "@tanstack/react-query";
+import {createFileRoute} from "@tanstack/react-router";
+import {useAuth} from "@/hooks/useAuth";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/profile")({
 	component: RouteComponent,

@@ -1,5 +1,5 @@
-import { useRouteContext } from "@tanstack/react-router";
-import type { Session, User } from "better-auth";
+import {useRouteContext} from "@tanstack/react-router";
+import type {Session, User} from "better-auth";
 
 export function useAuth() {
 	// Get auth from the _authenticated layout

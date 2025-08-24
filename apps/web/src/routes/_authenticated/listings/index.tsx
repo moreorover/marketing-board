@@ -1,17 +1,11 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
-import { ListingCard } from "@/components/listing-card";
+import {useMutation, useQuery} from "@tanstack/react-query";
+import {createFileRoute, Link} from "@tanstack/react-router";
+import {Plus} from "lucide-react";
+import {ListingCard} from "@/components/listing-card";
 import Loader from "@/components/loader";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {trpc} from "@/utils/trpc";
 
 export const Route = createFileRoute("/_authenticated/listings/")({
 	loader: async ({ context: { trpc, queryClient } }) => {

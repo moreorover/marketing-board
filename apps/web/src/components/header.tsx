@@ -1,16 +1,10 @@
-import type { LinkProps } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
-import {
-	Building2,
-	Home,
-	LayoutDashboard,
-	type LucideIcon,
-	User,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { authClient } from "@/lib/auth-client";
-import { ModeToggle } from "./mode-toggle";
+import type {LinkProps} from "@tanstack/react-router";
+import {Link} from "@tanstack/react-router";
+import {Building2, Home, LayoutDashboard, type LucideIcon, User,} from "lucide-react";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
+import {authClient} from "@/lib/auth-client";
+import {ModeToggle} from "./mode-toggle";
 import UserMenu from "./user-menu";
 
 interface NavigationItem {

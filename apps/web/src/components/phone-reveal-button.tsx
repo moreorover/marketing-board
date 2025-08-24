@@ -1,16 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
-import { Loader2, Phone } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import {useMutation} from "@tanstack/react-query";
+import {Loader2, Phone} from "lucide-react";
+import {useState} from "react";
+import {toast} from "sonner";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {trpc} from "@/utils/trpc";
 import WhatsAppButtonGreenSmall from "../../static/WhatsAppButtonGreenSmall.svg";
 
 interface PhoneRevealButtonProps {

@@ -1,19 +1,14 @@
-import type { QueryClient } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import {
-	createRootRouteWithContext,
-	HeadContent,
-	Outlet,
-	useRouterState,
-} from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import type {QueryClient} from "@tanstack/react-query";
+import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
+import {createRootRouteWithContext, HeadContent, Outlet, useRouterState,} from "@tanstack/react-router";
+import {TanStackRouterDevtools} from "@tanstack/react-router-devtools";
 import Header from "@/components/header";
 import Loader from "@/components/loader";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
-import type { trpc } from "@/utils/trpc";
+import {ThemeProvider} from "@/components/theme-provider";
+import {Toaster} from "@/components/ui/sonner";
+import type {trpc} from "@/utils/trpc";
 import "../index.css";
-import type { Session, User } from "better-auth";
+import type {Session, User} from "better-auth";
 
 export interface RouterAppContext {
 	trpc: typeof trpc;

@@ -1,12 +1,12 @@
-import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
+import {useForm} from "@tanstack/react-form";
+import {useNavigate} from "@tanstack/react-router";
+import {toast} from "sonner";
 import z from "zod";
-import { authClient } from "@/lib/auth-client";
+import {authClient} from "@/lib/auth-client";
 import Loader from "./loader";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import {Button} from "./ui/button";
+import {Input} from "./ui/input";
+import {Label} from "./ui/label";
 
 export default function SignInForm({
 	onSwitchToSignUp,

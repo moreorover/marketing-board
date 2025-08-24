@@ -1,5 +1,5 @@
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
-import { createAuthClient } from "better-auth/react";
+import {queryOptions, useSuspenseQuery} from "@tanstack/react-query";
+import {createAuthClient} from "better-auth/react";
 
 export const authClient = createAuthClient({
 	baseURL: import.meta.env.VITE_SERVER_URL,

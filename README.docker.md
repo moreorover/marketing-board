@@ -46,11 +46,13 @@ This guide explains how to deploy the marketing-board application using Docker w
 After starting the services with `docker compose up -d`, you can tail logs for individual services:
 
 **All services:**
+
 ```bash
 docker compose logs -f
 ```
 
 **Individual services:**
+
 ```bash
 # Database logs
 docker compose logs -f postgres
@@ -66,6 +68,7 @@ docker compose logs -f caddy
 ```
 
 **Multiple services:**
+
 ```bash
 # Server and database logs together
 docker compose logs -f server postgres
@@ -77,16 +80,18 @@ The Docker Compose setup includes:
 
 - **PostgreSQL** (port 5432) - Database
 - **Server** (port 3000) - Hono + tRPC API
-- **Web** (port 3001) - React frontend served by Nginx  
+- **Web** (port 3001) - React frontend served by Nginx
 - **Caddy** (ports 80/443) - Reverse proxy with automatic SSL
 
 ## SSL Certificates
 
-Caddy automatically obtains and renews SSL certificates from Let's Encrypt for your domain. No manual certificate management required.
+Caddy automatically obtains and renews SSL certificates from Let's Encrypt for your domain. No manual certificate
+management required.
 
 ## Monitoring
 
 Check service health:
+
 ```bash
 docker compose ps
 docker compose logs -f [service-name]

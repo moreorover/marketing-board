@@ -1,6 +1,6 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { user } from "@/db/schema/auth";
-import { listing } from "@/db/schema/listing";
+import {pgTable, text, timestamp, uuid} from "drizzle-orm/pg-core";
+import {user} from "@/db/schema/auth";
+import {listing} from "@/db/schema/listing";
 
 export const phoneView = pgTable("phone_view", {
 	id: uuid("id").primaryKey().defaultRandom(),
