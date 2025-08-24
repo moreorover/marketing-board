@@ -1,6 +1,6 @@
 import {TRPCError} from "@trpc/server";
 import {z} from "zod";
-import {protectedProcedure, router} from "../lib/trpc"; // Zod schemas for validation and type safety
+import {protectedProcedure, publicProcedure, router} from "../lib/trpc"; // Zod schemas for validation and type safety
 
 // Zod schemas for validation and type safety
 const PostcodeDataSchema = z.object({
@@ -332,14 +332,14 @@ export const postcodesRouter = router({
 	/**
 	 * Health check for the postcodes API
 	 */
-	healthCheck: protectedProcedure.query(async () => {
+	healthCheck: publicProcedure.query(async () => {
 		return await checkPostcodesApiHealth();
 	}),
 
 	/**
 	 * Simple health status check (returns boolean for quick checks)
 	 */
-	isHealthy: protectedProcedure.query(async (): Promise<boolean> => {
+	isHealthy: publicProcedure.query(async (): Promise<boolean> => {
 		try {
 			const health = await checkPostcodesApiHealth();
 			return health.status === "healthy";

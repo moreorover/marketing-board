@@ -20,9 +20,7 @@ export const Route = createFileRoute("/")({
 function HomeComponent() {
 	const version = __APP_VERSION__;
 	const healthCheck = useQuery(trpc.healthCheck.queryOptions());
-	const postcodesHealthCheck = useQuery(
-		trpc.postcodes.healthCheck.queryOptions(),
-	);
+	const postcodesIsHealthy = useQuery(trpc.postcodes.isHealthy.queryOptions());
 	const listings = useQuery(trpc.listing.getPublic.queryOptions());
 
 	return (
@@ -85,13 +83,11 @@ function HomeComponent() {
 								<div
 									className={cn(
 										"h-1.5 w-1.5 rounded-full transition-colors",
-										postcodesHealthCheck.isLoading &&
+										postcodesIsHealthy.isLoading &&
 											"animate-pulse bg-yellow-500",
-										postcodesHealthCheck.data?.status === "healthy" &&
-											"bg-green-500",
-										postcodesHealthCheck.data?.status === "unhealthy" &&
-											"bg-red-500",
-										postcodesHealthCheck.error && "bg-red-500",
+										postcodesIsHealthy.data && "bg-green-500",
+										!postcodesIsHealthy.data && "bg-red-500",
+										postcodesIsHealthy.error && "bg-red-500",
 									)}
 								/>
 								<span className="text-muted-foreground text-xs">Postcodes</span>
