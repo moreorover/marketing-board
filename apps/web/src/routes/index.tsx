@@ -18,6 +18,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomeComponent() {
+	const version = __APP_VERSION__;
 	const healthCheck = useQuery(trpc.healthCheck.queryOptions());
 	const postcodesHealthCheck = useQuery(
 		trpc.postcodes.healthCheck.queryOptions(),
@@ -60,9 +61,12 @@ function HomeComponent() {
 			<footer className="border-t bg-muted/50 py-4">
 				<div className="container mx-auto max-w-3xl px-4">
 					<div className="flex items-center justify-between gap-4">
-						<span className="text-muted-foreground text-xs">API Status</span>
+						<div className="flex items-center gap-4">
+							<span className="text-muted-foreground text-xs">v{version}</span>
+						</div>
 
 						<div className="flex items-center gap-4">
+							<span className="text-muted-foreground text-xs">API Status</span>
 							{/* Main API Status */}
 							<div className="flex items-center gap-1.5">
 								<div
