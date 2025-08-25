@@ -1,6 +1,6 @@
 import {TRPCError} from "@trpc/server";
 import {z} from "zod";
-import {protectedProcedure, publicProcedure, router} from "../lib/trpc"; // Zod schemas for validation and type safety
+import {protectedProcedure, publicProcedure, router} from "@/lib/trpc"; // Zod schemas for validation and type safety
 
 // Zod schemas for validation and type safety
 const PostcodeDataSchema = z.object({

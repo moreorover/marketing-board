@@ -7,7 +7,7 @@ import Loader from "@/components/loader";
 import {ThemeProvider} from "@/components/theme-provider";
 import {Toaster} from "@/components/ui/sonner";
 import type {trpc} from "@/utils/trpc";
-import "../index.css";
+import "@/index.css";
 import type {Session, User} from "better-auth";
 
 export interface RouterAppContext {

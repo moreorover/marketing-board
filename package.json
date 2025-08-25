@@ -10,6 +10,8 @@
 		"check": "biome check --write .",
 		"dev": "turbo dev",
 		"build": "turbo build",
+		"prune:server": "turbo prune server --docker",
+		"prune:web": "turbo prune web --docker",
 		"check-types": "turbo check-types",
 		"dev:native": "turbo -F native dev",
 		"dev:web": "turbo -F web dev",
