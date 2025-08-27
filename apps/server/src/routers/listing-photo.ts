@@ -3,20 +3,72 @@ import {and, asc, desc, eq, isNull} from "drizzle-orm";
 import z from "zod";
 import {db} from "@/db";
 import {type ListingPhoto, listingPhoto} from "@/db/schema/listing-photo";
-import {deleteImage, generateSignedImageUrl, uploadImage,} from "@/lib/spaces";
-import {protectedProcedure, router} from "@/lib/trpc";
+import {deleteImage, generateSignedImageUrl, uploadImage} from "@/lib/spaces";
+import {protectedProcedure, router} from "@/lib/trpc"; // Image file signature validation
+
+// Image file signature validation
+function isValidImageBuffer(buffer: Buffer, mimeType: string): boolean {
+	if (buffer.length < 8) return false;
+
+	const header = buffer.toString("hex", 0, 8).toLowerCase();
+
+	switch (mimeType) {
+		case "image/jpeg":
+		case "image/jpg":
+			return header.startsWith("ffd8ff");
+		case "image/png":
+			return header === "89504e47";
+		case "image/gif":
+			return header.startsWith("474946");
+		case "image/webp":
+			return (
+				buffer.toString("ascii", 0, 4) === "RIFF" &&
+				buffer.toString("ascii", 8, 12) === "WEBP"
+			);
+		default:
+			return false;
+	}
+}
 
 export const listingPhotoRouter = router({
 	uploadPhotos: protectedProcedure
 		.input(
 			z.object({
-				photos: z.array(
-					z.object({
-						name: z.string(),
-						type: z.string(),
-						data: z.string(),
-					}),
-				),
+				photos: z
+					.array(
+						z.object({
+							name: z.string().max(255, "Filename too long"),
+							type: z
+								.string()
+								.refine(
+									(type) =>
+										[
+											"image/jpeg",
+											"image/jpg",
+											"image/png",
+											"image/webp",
+											"image/gif",
+										].includes(type),
+									{
+										message: "Only JPEG, PNG, WebP and GIF images are allowed",
+									},
+								),
+							data: z.string().refine(
+								(data) => {
+									try {
+										const buffer = Buffer.from(data, "base64");
+										const sizeInMB = buffer.length / (1024 * 1024);
+										return sizeInMB <= 10; // 10MB limit per image
+									} catch {
+										return false;
+									}
+								},
+								{ message: "Image must be under 10MB and valid base64" },
+							),
+						}),
+					)
+					.min(1, "At least one photo is required")
+					.max(5, "Maximum 5 photos allowed per upload"),
 				listingId: z.string().nullable(),
 			}),
 		)
@@ -32,11 +84,11 @@ export const listingPhotoRouter = router({
 					and(eq(listingPhoto.userId, ctx.session.user.id), whereCondition),
 				);
 
-			if (existingPhotos.length >= 5) {
+			// Check if total photos would exceed limit
+			if (existingPhotos.length + input.photos.length > 5) {
 				throw new TRPCError({
 					code: "BAD_REQUEST",
-					message: "Already 5 photos uploaded.",
-					cause: "Up to 5 photos allowed.",
+					message: `Upload would exceed photo limit. You have ${existingPhotos.length} photos, attempting to add ${input.photos.length}. Maximum 5 photos allowed.`,
 				});
 			}
 
@@ -44,7 +96,26 @@ export const listingPhotoRouter = router({
 			const isFirstPhotoForListing = existingPhotos.length === 0;
 
 			for (const [index, photo] of input.photos.entries()) {
+				// Additional server-side validation
 				const buffer = Buffer.from(photo.data, "base64");
+
+				// Verify file size again on server
+				const sizeInMB = buffer.length / (1024 * 1024);
+				if (sizeInMB > 10) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: `Image ${photo.name} exceeds 10MB limit (${sizeInMB.toFixed(2)}MB)`,
+					});
+				}
+
+				// Basic file signature validation (magic bytes)
+				if (!isValidImageBuffer(buffer, photo.type)) {
+					throw new TRPCError({
+						code: "BAD_REQUEST",
+						message: `Invalid image format for ${photo.name}`,
+					});
+				}
+
 				const objectKey = await uploadImage(buffer, ctx.session.user.id);
 
 				const savedListingPhoto = await db
@@ -53,7 +124,7 @@ export const listingPhotoRouter = router({
 						objectKey: objectKey,
 						userId: ctx.session.user.id,
 						listingId: input.listingId,
-						isMain: isFirstPhotoForListing && index === 0, // Set first photo as main if no existing photos
+						isMain: isFirstPhotoForListing && index === 0,
 					})
 					.returning();
 
