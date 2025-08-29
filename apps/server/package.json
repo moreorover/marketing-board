@@ -38,7 +38,7 @@
     "@types/node": "^22.18.0",
     "@types/pg": "^8.15.5",
     "drizzle-kit": "^0.31.4",
-    "tsdown": "^0.12.9",
+    "tsdown": "^0.14.2",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
