@@ -64,6 +64,7 @@ function RootComponent() {
 				<Toaster richColors />
 			</ThemeProvider>
 			<TanStackDevtools
+				config={{ position: "bottom-right" }}
 				plugins={[
 					{
 						name: "TanStack Query",
