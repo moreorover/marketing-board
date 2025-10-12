@@ -18,22 +18,3 @@ jobs:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           USERNAME: op://marketing-dev/better-auth/username
           PASSWORD: op://marketing-dev/better-auth/password
-
-      - name: Write .env with USERNAME and PASSWORD
-        shell: bash
-        env:
-          USERNAME: ${{ steps.load_secrets.outputs.USERNAME }}
-          PASSWORD: ${{ steps.load_secrets.outputs.PASSWORD }}
-        run: |
-          {
-            printf 'USERNAME=%s\n' "$USERNAME"
-            printf 'PASSWORD=%s\n' "$PASSWORD"
-          } > mock-secrets.env
-          echo "Wrote mock-secrets.env ($(stat -c%s mock-secrets.env) bytes)"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mock-secrets-env
-          path: mock-secrets.env
-          retention-days: 1
