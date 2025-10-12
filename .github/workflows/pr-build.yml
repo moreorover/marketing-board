@@ -19,8 +19,19 @@ jobs:
           USERNAME: op://marketing-dev/better-auth/username
           PASSWORD: op://marketing-dev/better-auth/password
 
-      - name: Print masked password
-        run: 'echo "Secret: ${{ steps.load_secrets.outputs.PASSWORD }}"'
+      - name: Write mock secret to file (RAW)
+        shell: bash
+        env:
+          USERNAME: ${{ steps.load_secrets.outputs.USERNAME }}
+          PASSWORD: ${{ steps.load_secrets.outputs.PASSWORD }}
+        run: |
+          # Use printf to avoid trailing newline differences
+          printf %s "PASSWORD" > mock-secret.txt
+          echo "Wrote mock-secret.txt (size: $(stat -c%s mock-secret.txt) bytes)"
 
-      - name: Print username
-        run: 'echo "Secret: ${{ steps.load_secrets.outputs.USERNAME }}"'
+      - name: Upload artifact (mock secret)
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-secret
+          path: mock-secret.txt
+          retention-days: 1
