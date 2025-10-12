@@ -16,7 +16,11 @@ jobs:
         uses: 1password/load-secrets-action@v3
         env:
           OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          SECRET: op://marketing-dev/better-auth/password
+          USERNAME: op://marketing-dev/better-auth/username
+          PASSWORD: op://marketing-dev/better-auth/password
 
-      - name: Print masked secret
-        run: 'echo "Secret: ${{ steps.load_secrets.outputs.SECRET }}"'
+      - name: Print masked password
+        run: 'echo "Secret: ${{ steps.load_secrets.outputs.PASSWORD }}"'
+
+      - name: Print username
+        run: 'echo "Secret: ${{ steps.load_secrets.outputs.USERNAME }}"'
