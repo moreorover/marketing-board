@@ -1,0 +1,20 @@
+name: PR Build Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  op:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load secret
+        id: load_secrets
+        uses: 1password/load-secrets-action@v3
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          USERNAME: op://marketing-dev/better-auth/username
+          PASSWORD: op://marketing-dev/better-auth/password
